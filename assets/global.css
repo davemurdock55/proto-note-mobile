@@ -1,0 +1,4 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* NOTE: If you change the name of this file, you'll need to edit it in metro.config.js (and check any imports to make sure they still work) */
