@@ -4,8 +4,8 @@ import { HelloWave } from "@/components/HelloWave";
 import ParallaxScrollView from "@/components/ParallaxScrollView";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import Button from "../(components)/button";
-import "../../assets/global.css";
+import Button from "@/components/button";
+import "@/assets/global.css";
 import { verifyInstallation } from "nativewind";
 
 export default function HomeScreen() {
