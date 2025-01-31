@@ -1,17 +1,15 @@
+import React from "react";
+import { Text, View, StyleSheet, StatusBar } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import NotesList from "@/components/NotesList";
-import { Text, View, StyleSheet, StatusBar, Pressable, Button } from "react-native";
 
 export default function Index() {
   return (
-    <View>
-      <Text>Hi there! :)</Text>
-      <Text>Edit app/index.tsx to edit this screen.</Text>
-      <Pressable style={styles.pressable} onPress={() => console.log("pressed")}>
-        <Text>Test Button</Text>
-      </Pressable>
-      <Button title="another test button" />
-      <NotesList />
-    </View>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
+        <NotesList />
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -28,9 +26,5 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-  },
-  pressable: {
-    padding: 20,
-    backgroundColor: "#ffff00",
   },
 });
