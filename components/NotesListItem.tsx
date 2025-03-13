@@ -5,13 +5,14 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 type ItemProps = {
   title: string;
   lastEditTime: number;
+  onPress?: () => void;
 };
 
-const NotesListItem = ({ title, lastEditTime }: ItemProps) => {
+const NotesListItem = ({ title, lastEditTime, onPress }: ItemProps) => {
   const formattedDate = new Date(lastEditTime).toLocaleString();
   return (
     <Link href={`/note/${title}`} asChild>
-      <Pressable>
+      <Pressable onPress={onPress}>
         <View style={styles.item}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.lastEditTime}>{formattedDate}</Text>
