@@ -1,6 +1,17 @@
 import React, { useState } from "react";
-import { SafeAreaView, KeyboardAvoidingView, Platform, StyleSheet } from "react-native";
-import { RichText, Toolbar, useEditorBridge, TenTapStartKit, CoreBridge } from "@10play/tentap-editor";
+import {
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+} from "react-native";
+import {
+  RichText,
+  Toolbar,
+  useEditorBridge,
+  TenTapStartKit,
+  CoreBridge,
+} from "@10play/tentap-editor";
 
 // Define your custom CSS
 const customCSS = `
@@ -9,7 +20,10 @@ const customCSS = `
 }
 `;
 
-export const TenTapEditor = ({ initialValue = "<p>Start typing here...</p>", onChange }) => {
+export const TenTapEditor = ({
+  initialValue = "<p>Start writing here...</p>",
+  onChange,
+}) => {
   const [content, setContent] = useState(initialValue);
 
   const editor = useEditorBridge({
@@ -30,7 +44,10 @@ export const TenTapEditor = ({ initialValue = "<p>Start typing here...</p>", onC
   return (
     <SafeAreaView style={styles.fullScreen}>
       <RichText editor={editor} style={styles.editor} />
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardAvoidingView}
+      >
         <Toolbar editor={editor} />
       </KeyboardAvoidingView>
     </SafeAreaView>
