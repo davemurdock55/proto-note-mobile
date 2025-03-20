@@ -117,8 +117,13 @@ export default function RootLayout() {
           text: "Create",
           onPress: (name) => {
             if (name && name.trim()) {
-              createEmptyNote(name.trim());
-              router.push(`/note/note-${name.trim()}`);
+              const noteTitle = name.trim();
+              const newNoteId = createEmptyNote(noteTitle);
+
+              router.push(`/note/${newNoteId}`);
+              if (Platform.OS === "ios") {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              }
             }
           },
         },

@@ -116,32 +116,26 @@ export const createEmptyNoteAtom = atom(
   null,
   async (get, set, title?: string) => {
     const notes = get(notesAtom);
-
     if (!notes) return;
 
-    // Create new note via API
-    const createdNoteTitle = await noteService.createNote(
-      title || `Note ${Date.now()}`
-    );
+    // Generate ID first so it's consistent through the process
+    const newId = `note-${Date.now()}`;
 
-    console.log("*** createdNoteTitle ***: ", createdNoteTitle);
+    // Pass the ID to createNote so filesystem uses the same ID
+    const userTitle = title || `Note ${Date.now()}`;
+    const success = await noteService.createNote(newId, userTitle);
 
-    if (!createdNoteTitle) return;
+    if (!success) return;
 
-    const newId = "note-" + Date.now();
-
-    // Create new note object and add to state
+    // Create new note object with the exact same ID and title
     const newNote: NoteInfo = {
       id: newId,
-      title: createdNoteTitle,
+      title: userTitle, // Use the actual title user specified
       lastEditTime: Date.now(),
     };
 
     // Add new note to the beginning of the list and select it
-    set(notesAtom, [
-      newNote,
-      ...notes.filter((note) => note.title !== newNote.title),
-    ]);
+    set(notesAtom, [newNote, ...notes.filter((note) => note.id !== newId)]);
     set(selectedNoteIndexAtom, 0);
 
     return newId;
@@ -185,14 +179,14 @@ export const deleteNoteAtom = atom(null, async (get, set, id?: string) => {
   if (!selectedNote || !notes) return;
 
   // Delete note via API
-  const isDeleted = await noteService.deleteNote(selectedNote.title);
+  const isDeleted = await noteService.deleteNote(selectedNote.id);
 
   if (!isDeleted) return;
 
   // Remove deleted note from local state
   set(
     notesAtom,
-    notes.filter((note) => note.title !== selectedNote.title)
+    notes.filter((note) => note.id !== selectedNote.id)
   );
 
   // Clear selection

@@ -48,7 +48,7 @@ export const noteService = {
   async readNote(id: string, title: string): Promise<NoteContent> {
     try {
       // First try to read from file system
-      const localContent = await fileSystemService.readNote(title);
+      const localContent = await fileSystemService.readNote(id);
       if (localContent) {
         return localContent;
       }
@@ -106,18 +106,18 @@ export const noteService = {
     }
   },
 
-  async createNote(title: string): Promise<string | null> {
+  async createNote(id: string, title: string): Promise<boolean> {
     try {
-      // Create note in file system
-      const localTitle = await fileSystemService.createNote(title);
-      if (!localTitle) throw new Error("Failed to create note in file system");
+      // Create note in file system with provided ID and title
+      const success = await fileSystemService.createNote(id, title);
+      if (!success) throw new Error("Failed to create note in file system");
 
       // Try to sync with API
       try {
         const response = await fetch(API_BASE_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: localTitle }),
+          body: JSON.stringify({ id, title }),
         });
         // API sync failure is not critical, we already created locally
         if (!response.ok)
@@ -126,10 +126,10 @@ export const noteService = {
         console.warn("Note created locally but API sync failed", apiError);
       }
 
-      return localTitle;
+      return true;
     } catch (error) {
       console.error("Failed to create note", error);
-      return null;
+      return false;
     }
   },
 

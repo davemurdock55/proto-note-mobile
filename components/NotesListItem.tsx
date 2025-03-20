@@ -52,7 +52,6 @@ const NotesListItem = ({
     drag: SharedValue<number>
   ) => {
     const buttonAnimation = useAnimatedStyle(() => {
-      // Button width calculation remains the same
       const width = Math.min(100, Math.max(20, Math.abs(drag.value)));
 
       return {
@@ -61,13 +60,10 @@ const NotesListItem = ({
       };
     });
 
-    // Add separate animation for text
     const textAnimation = useAnimatedStyle(() => {
+      // Don't calculate width twice, access drag.value only once
       const width = Math.min(100, Math.max(20, Math.abs(drag.value)));
 
-      // Text disappears faster than the button shrinks:
-      // - Below 60px: text is invisible
-      // - Above 60px: text is visible
       return {
         opacity: width < 60 ? 0 : 1,
       };

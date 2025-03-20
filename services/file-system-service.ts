@@ -14,6 +14,7 @@ export const fileSystemService = {
   },
 
   async getNotes(): Promise<NoteInfo[]> {
+    // This method stays mostly the same
     await this.initializeDirectory();
     const files = await FileSystem.readDirectoryAsync(NOTES_DIRECTORY);
     const metadataFiles = files.filter((file) => file.endsWith(".meta.json"));
@@ -28,32 +29,35 @@ export const fileSystemService = {
     return Promise.all(notesPromises);
   },
 
-  async readNote(title: string): Promise<NoteContent> {
+  // Change to use ID instead of title
+  async readNote(id: string): Promise<NoteContent> {
     await this.initializeDirectory();
-    const path = `${NOTES_DIRECTORY}${this.sanitizeFilename(title)}.content`;
+    const path = `${NOTES_DIRECTORY}${this.sanitizeFilename(id)}.content`;
 
     try {
       return await FileSystem.readAsStringAsync(path);
     } catch (error) {
-      console.warn(`Failed to read note from file: ${title}`, error);
-      return `<p>This is note: ${title}</p>`;
+      console.warn(`Failed to read note with ID: ${id}`, error);
+      return `<p>Note content unavailable</p>`;
     }
   },
 
+  // Update to use ID for filenames
   async writeNote(
     id: string,
     title: string,
     content: NoteContent
   ): Promise<boolean> {
     await this.initializeDirectory();
-    const contentPath = `${NOTES_DIRECTORY}${this.sanitizeFilename(title)}.txt`;
-    const metaPath = `${NOTES_DIRECTORY}${this.sanitizeFilename(
-      title
-    )}.meta.json`;
+    // Use ID for filenames instead of title
+    const contentPath = `${NOTES_DIRECTORY}${this.sanitizeFilename(
+      id
+    )}.content`;
+    const metaPath = `${NOTES_DIRECTORY}${this.sanitizeFilename(id)}.meta.json`;
 
     try {
-      // Write content file - ensure content is a string
-      const contentString = content || ""; // Provide empty string if content is undefined
+      // Write content file
+      const contentString = content || "";
       await FileSystem.writeAsStringAsync(contentPath, contentString);
 
       // Update metadata file
@@ -66,21 +70,16 @@ export const fileSystemService = {
       await FileSystem.writeAsStringAsync(metaPath, JSON.stringify(metadata));
       return true;
     } catch (error) {
-      console.error(`Failed to write note to file: ${title}`, error);
+      console.error(`Failed to write note with ID: ${id}`, error);
       return false;
     }
   },
 
-  async createNote(
-    id: string = `note-${Date.now()}`,
-    title: string = `Note ${Date.now()}`
-  ): Promise<string | null> {
+  async createNote(id: string, title: string): Promise<boolean> {
     await this.initializeDirectory();
-    const metaPath = `${NOTES_DIRECTORY}${this.sanitizeFilename(
-      title
-    )}.meta.json`;
+    const metaPath = `${NOTES_DIRECTORY}${this.sanitizeFilename(id)}.meta.json`;
     const contentPath = `${NOTES_DIRECTORY}${this.sanitizeFilename(
-      title
+      id
     )}.content`;
 
     try {
@@ -95,10 +94,10 @@ export const fileSystemService = {
       };
 
       await FileSystem.writeAsStringAsync(metaPath, JSON.stringify(metadata));
-      return title;
+      return true;
     } catch (error) {
       console.error(`Failed to create note file: ${title}`, error);
-      return null;
+      return false;
     }
   },
 
