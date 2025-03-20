@@ -69,10 +69,6 @@ export default function NotePage() {
 
   return (
     <View style={styles.container}>
-      <Text>{selectedNote?.id}</Text>
-      <Text>{selectedNote?.title}</Text>
-      <Text>{selectedNote?.lastEditTime}</Text>
-
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <Text>Loading note...</Text>
