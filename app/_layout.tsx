@@ -20,6 +20,7 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useState, useRef, useEffect } from "react";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system";
+import { BlurView } from "expo-blur";
 
 // Configure Reanimated logger before the component
 configureReanimatedLogger({
@@ -28,11 +29,6 @@ configureReanimatedLogger({
 });
 
 // NOTE: Start app with `npx expo start --clear`
-
-// Import useState and useEffect at the top with your other imports
-
-// ProfileDropdown component
-// Create a new component for the header right that maintains its own state
 
 export default function RootLayout() {
   const router = useRouter();
@@ -205,17 +201,19 @@ export default function RootLayout() {
               <Animated.View
                 style={[
                   styles.dropdown,
-                  Platform.OS === "ios"
-                    ? styles.iosDropdown
-                    : styles.androidDropdown,
                   {
                     opacity: fadeAnim,
                     transform: [{ scale: scaleAnim }],
-                    top: 65, // Fixed position from top
-                    right: 20, // Fixed position from right
+                    top: 92, // Move down below the header
+                    right: 20, // Keep right alignment
                   },
                 ]}
               >
+                <BlurView
+                  intensity={80}
+                  tint={Platform.OS === "ios" ? "light" : "default"}
+                  style={StyleSheet.absoluteFill}
+                />
                 <Pressable
                   onPress={handleResetPress}
                   style={({ pressed }) => [
@@ -223,8 +221,8 @@ export default function RootLayout() {
                     {
                       backgroundColor: pressed
                         ? Platform.OS === "ios"
-                          ? "#F1F1F1"
-                          : "#EEEEEE"
+                          ? "rgba(241, 241, 241, 0.5)"
+                          : "rgba(238, 238, 238, 0.5)"
                         : "transparent",
                     },
                   ]}
@@ -320,9 +318,11 @@ const styles = StyleSheet.create({
     minWidth: 120,
     borderRadius: 10,
     overflow: "hidden",
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderWidth: 1,
   },
   iosDropdown: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    backgroundColor: "rgba(255, 255, 255, 0.75)", // More transparent
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   androidDropdown: {
-    backgroundColor: "white",
+    backgroundColor: "rgba(255, 255, 255, 0.85)", // More transparent for Android
     elevation: 5,
   },
   dropdownItem: {
