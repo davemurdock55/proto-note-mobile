@@ -311,18 +311,18 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    backgroundColor: "transparent",
   },
   dropdown: {
     position: "absolute",
     minWidth: 120,
     borderRadius: 10,
     overflow: "hidden",
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(227, 227, 227, 0.5)",
     borderWidth: 1,
   },
   iosDropdown: {
-    backgroundColor: "rgba(255, 255, 255, 0.75)", // More transparent
+    backgroundColor: "rgba(227, 227, 227, 0.85)", // More transparent
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   androidDropdown: {
-    backgroundColor: "rgba(255, 255, 255, 0.85)", // More transparent for Android
+    backgroundColor: "rgba(227, 227, 227, 0.85)", // More transparent for Android
     elevation: 5,
   },
   dropdownItem: {
