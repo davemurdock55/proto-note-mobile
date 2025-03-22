@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+import { Stack, useRouter, usePathname } from "expo-router";
 import {
   Pressable,
   View,
@@ -8,26 +8,51 @@ import {
   Animated,
   TouchableWithoutFeedback,
   Alert,
-  TextInput,
+  Modal,
 } from "react-native";
-import { useRouter } from "expo-router";
+import {
+  configureReanimatedLogger,
+  ReanimatedLogLevel,
+} from "react-native-reanimated";
 import { useSetAtom } from "jotai";
-import { createEmptyNoteAtom, selectedNoteAtom } from "@/store";
+import { createEmptyNoteAtom } from "@/store";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useState, useRef, useEffect } from "react";
 import * as Haptics from "expo-haptics";
+import * as FileSystem from "expo-file-system";
+
+// Configure Reanimated logger before the component
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false, // This will disable the strict mode warnings
+});
 
 // NOTE: Start app with `npx expo start --clear`
 
+// Import useState and useEffect at the top with your other imports
+
+// ProfileDropdown component
+// Create a new component for the header right that maintains its own state
+
 export default function RootLayout() {
   const router = useRouter();
+  const pathname = usePathname();
   const createEmptyNote = useSetAtom(createEmptyNoteAtom);
-  const [showDropdown, setShowDropdown] = useState(false);
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
+
+  // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
+  // Close modal when navigating
   useEffect(() => {
-    if (showDropdown) {
+    setShowModal(false);
+  }, [pathname]);
+
+  // Same animation effect
+  useEffect(() => {
+    if (showModal) {
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -58,17 +83,47 @@ export default function RootLayout() {
         }),
       ]).start();
     }
-  }, [showDropdown]);
+  }, [showModal]);
 
+  // Move all handlers to root component
   const handleAccountPress = () => {
-    setShowDropdown(!showDropdown);
+    setShowModal(!showModal);
+    console.log("Account toggled, new state:", !showModal);
+  };
+
+  const handleResetPress = () => {
+    Alert.alert(
+      "Confirm Reset",
+      "Are you sure you want to delete ALL notes? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete All", style: "destructive", onPress: clearAllData },
+      ]
+    );
+    setShowModal(false);
   };
 
   const handleLogout = () => {
-    // Implement your logout logic here
     console.log("Logging out...");
-    setShowDropdown(false);
-    // Example: router.replace("/login");
+    setShowModal(false);
+  };
+
+  // Clear data implementation
+  const clearAllData = async () => {
+    try {
+      const NOTES_DIRECTORY = `${FileSystem.documentDirectory}notes/`;
+      await FileSystem.deleteAsync(NOTES_DIRECTORY, { idempotent: true });
+      await FileSystem.makeDirectoryAsync(NOTES_DIRECTORY, {
+        intermediates: true,
+      });
+      Alert.alert(
+        "Success",
+        "All data cleared successfully. Restart the app to see changes."
+      );
+    } catch (error) {
+      console.error("Failed to clear data:", error);
+      Alert.alert("Error", "Failed to clear data. See console for details.");
+    }
   };
 
   const showCreateNoteDialog = () => {
@@ -137,11 +192,88 @@ export default function RootLayout() {
 
   return (
     <>
-      {showDropdown && (
-        <TouchableWithoutFeedback onPress={() => setShowDropdown(false)}>
-          <View style={styles.backdrop} />
+      {/* Only one Modal, no duplicated components */}
+      <Modal
+        visible={showModal}
+        transparent={true}
+        animationType="none" // Handle animation manually
+        onRequestClose={() => setShowModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowModal(false)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback>
+              <Animated.View
+                style={[
+                  styles.dropdown,
+                  Platform.OS === "ios"
+                    ? styles.iosDropdown
+                    : styles.androidDropdown,
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ scale: scaleAnim }],
+                    top: 65, // Fixed position from top
+                    right: 20, // Fixed position from right
+                  },
+                ]}
+              >
+                <Pressable
+                  onPress={handleResetPress}
+                  style={({ pressed }) => [
+                    styles.dropdownItem,
+                    {
+                      backgroundColor: pressed
+                        ? Platform.OS === "ios"
+                          ? "#F1F1F1"
+                          : "#EEEEEE"
+                        : "transparent",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownText,
+                      Platform.OS === "ios"
+                        ? styles.iosText
+                        : styles.androidText,
+                      { color: "#FF3B30" },
+                    ]}
+                  >
+                    Reset All Data
+                  </Text>
+                </Pressable>
+
+                <View style={styles.divider} />
+
+                <Pressable
+                  onPress={handleLogout}
+                  style={({ pressed }) => [
+                    styles.dropdownItem,
+                    {
+                      backgroundColor: pressed
+                        ? Platform.OS === "ios"
+                          ? "#F1F1F1"
+                          : "#EEEEEE"
+                        : "transparent",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownText,
+                      Platform.OS === "ios"
+                        ? styles.iosText
+                        : styles.androidText,
+                      { color: "#FF3B30" },
+                    ]}
+                  >
+                    Logout
+                  </Text>
+                </Pressable>
+              </Animated.View>
+            </TouchableWithoutFeedback>
+          </View>
         </TouchableWithoutFeedback>
-      )}
+      </Modal>
 
       <Stack
         screenOptions={{
@@ -158,58 +290,15 @@ export default function RootLayout() {
             </Pressable>
           ),
           headerRight: () => (
-            <View>
-              <Pressable
-                onPress={handleAccountPress}
-                style={({ pressed }) => ({
-                  opacity: pressed ? 0.6 : 1,
-                  marginLeft: 15,
-                })}
-              >
-                <IconSymbol name="person.circle" size={24} color="#0a7ea4" />
-              </Pressable>
-
-              {showDropdown && (
-                <Animated.View
-                  style={[
-                    styles.dropdown,
-                    Platform.OS === "ios"
-                      ? styles.iosDropdown
-                      : styles.androidDropdown,
-                    {
-                      opacity: fadeAnim,
-                      transform: [{ scale: scaleAnim }],
-                    },
-                  ]}
-                >
-                  <Pressable
-                    onPress={handleLogout}
-                    style={({ pressed }) => [
-                      styles.dropdownItem,
-                      {
-                        backgroundColor: pressed
-                          ? Platform.OS === "ios"
-                            ? "#F1F1F1"
-                            : "#EEEEEE"
-                          : "transparent",
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.dropdownText,
-                        Platform.OS === "ios"
-                          ? styles.iosText
-                          : styles.androidText,
-                        { color: "#FF3B30" },
-                      ]}
-                    >
-                      Logout
-                    </Text>
-                  </Pressable>
-                </Animated.View>
-              )}
-            </View>
+            <Pressable
+              onPress={handleAccountPress}
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.6 : 1,
+                marginLeft: 15,
+              })}
+            >
+              <IconSymbol name="person.circle" size={24} color="#0a7ea4" />
+            </Pressable>
           ),
         }}
       />
@@ -218,20 +307,17 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  modalBackdrop: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
   },
   dropdown: {
     position: "absolute",
-    top: 40,
-    right: 0,
     minWidth: 120,
-    zIndex: 1000,
     borderRadius: 10,
     overflow: "hidden",
   },
@@ -242,7 +328,7 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    shadowOpacity: 1,
+    shadowOpacity: 0.25,
     shadowRadius: 4,
   },
   androidDropdown: {
@@ -262,5 +348,10 @@ const styles = StyleSheet.create({
   },
   androidText: {
     color: "#333",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Platform.OS === "ios" ? "#E0E0E0" : "#DDDDDD",
+    width: "100%",
   },
 });

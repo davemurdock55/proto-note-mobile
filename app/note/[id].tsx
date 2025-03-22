@@ -1,7 +1,7 @@
 import { TenTapEditor } from "@/components/TenTapEditor";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { useEffect, useRef, useCallback, useState } from "react";
-import { StyleSheet, View, Text } from "react-native";
+import { StyleSheet, View, Text, Pressable } from "react-native";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   notesAtom,
@@ -9,6 +9,34 @@ import {
   saveNoteAtom,
   selectedNoteAtom,
 } from "@/store";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+
+// Define these outside of the NotePage component
+const BackButton = ({ onPress }) => (
+  <Pressable
+    onPress={onPress}
+    style={({ pressed }) => ({
+      opacity: pressed ? 0.6 : 1,
+      marginRight: 15,
+    })}
+  >
+    <IconSymbol name="chevron.left" size={24} color="#0a7ea4" />
+  </Pressable>
+);
+
+const SaveButton = ({ onPress }) => (
+  <Pressable
+    onPress={onPress}
+    style={({ pressed }) => ({
+      opacity: pressed ? 0.6 : 1,
+      marginLeft: 15,
+    })}
+  >
+    <Text style={{ color: "#0a7ea4", fontWeight: "500", fontSize: 18 }}>
+      Save
+    </Text>
+  </Pressable>
+);
 
 export default function NotePage() {
   const { id } = useLocalSearchParams();
@@ -24,6 +52,26 @@ export default function NotePage() {
   // Ref to store the timeout ID
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const handleManualSave = useCallback(() => {
+    if (selectedNote && selectedNote.content) {
+      // Clear any pending autosave
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      // Perform immediate save
+      saveNote(selectedNote.content);
+    }
+  }, [selectedNote, saveNote]);
+
+  // In your component:
+  useEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => <BackButton onPress={() => navigation.goBack()} />,
+      headerRight: () => <SaveButton onPress={handleManualSave} />,
+    });
+  }, [navigation, handleManualSave]);
+
   // Debounced save function - keep this as is
   const debouncedSave = useCallback(
     (content: string) => {
@@ -35,7 +83,7 @@ export default function NotePage() {
       // Set a new timeout for 1 minute (60000ms)
       saveTimerRef.current = setTimeout(() => {
         saveNote(content);
-      }, 60000);
+      }, 2000); // 2 seconds
     },
     [saveNote]
   );
@@ -59,13 +107,27 @@ export default function NotePage() {
     };
   }, [id, notes, setSelectedIndex]);
 
-  // Add a separate effect for updating title and tracking when content loads
+  // Effect for updating title and tracking when content loads
   useEffect(() => {
     if (selectedNote && selectedNote.id === id) {
       navigation.setOptions({ title: selectedNote.title });
       setIsLoading(false); // Content loaded
     }
   }, [selectedNote, navigation, id]);
+
+  useEffect(() => {
+    // Save immediately when navigating away
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+
+        // Save the current content if we have a selected note
+        if (selectedNote && selectedNote.content) {
+          saveNote(selectedNote.content);
+        }
+      }
+    };
+  }, [saveNote, selectedNote]);
 
   return (
     <View style={styles.container}>

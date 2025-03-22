@@ -70,9 +70,9 @@ const NotesList = () => {
         )}
         keyExtractor={(item) => item.id}
       />
-      <Pressable onPressIn={handleResetPress} style={styles.resetButton}>
+      {/* <Pressable onPressIn={handleResetPress} style={styles.resetButton}>
         <Text style={styles.resetButtonText}>Reset All Data</Text>
-      </Pressable>
+      </Pressable> */}
     </SafeAreaView>
   );
 };

@@ -52,7 +52,8 @@ const NotesListItem = ({
     drag: SharedValue<number>
   ) => {
     const buttonAnimation = useAnimatedStyle(() => {
-      const width = Math.min(100, Math.max(20, Math.abs(drag.value)));
+      const dragValue = drag.value;
+      const width = Math.min(100, Math.max(20, Math.abs(dragValue)));
 
       return {
         width: width,
@@ -62,7 +63,8 @@ const NotesListItem = ({
 
     const textAnimation = useAnimatedStyle(() => {
       // Don't calculate width twice, access drag.value only once
-      const width = Math.min(100, Math.max(20, Math.abs(drag.value)));
+      const dragValue = drag.value;
+      const width = Math.min(100, Math.max(20, Math.abs(dragValue)));
 
       return {
         opacity: width < 60 ? 0 : 1,
