@@ -59,76 +59,8 @@ export default function RootLayout() {
         // Return the temp ID immediately
         return tempId;
       },
-      onSuccess: () => {
-        // This will be called with the temp ID, so we don't need to navigate here
-        // Navigation happens in the promise handler above
-      },
     });
   };
-
-  //   const showCreateNoteDialog = () => {
-  //     // Use platform-specific approach
-  //     if (Platform.OS === "ios") {
-  //       // iOS uses prompt for native single-input dialogs
-  //       Alert.prompt(
-  //         "Create New Note",
-  //         "Enter a name for your new note:",
-  //         [
-  //           {
-  //             text: "Cancel",
-  //             style: "cancel",
-  //           },
-  //           {
-  //             text: "Create",
-  //             onPress: (name) => {
-  //               if (name && name.trim()) {
-  //                 const noteTitle = name.trim() ?? "New Note";
-  //                 const newNoteId = createEmptyNote(noteTitle);
-  //
-  //                 console.log("New note created:", newNoteId);
-  //
-  //                 router.push(`/note/${newNoteId}`);
-  //                 if (Platform.OS === "ios") {
-  //                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  //                 }
-  //               }
-  //             },
-  //           },
-  //         ],
-  //         "plain-text",
-  //         "New Note"
-  //       );
-  //     } else {
-  //       // Android doesn't support text input in Alert natively
-  //       // We'll use a workaround with a custom implementation
-  //       // let noteTitle = `Note ${new Date().toLocaleDateString()}`;
-  //
-  //       Alert.alert("Create New Note", "Enter a name for your new note:", [
-  //         {
-  //           text: "Cancel",
-  //           style: "cancel",
-  //         },
-  //         {
-  //           text: "Create",
-  //           onPress: (name) => {
-  //             if (name && name.trim()) {
-  //               const noteTitle = name.trim();
-  //               const newNoteId = createEmptyNote(noteTitle);
-  //
-  //               router.push(`/note/${newNoteId}`);
-  //               if (Platform.OS === "ios") {
-  //                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  //               }
-  //             }
-  //           },
-  //         },
-  //       ]);
-  //
-  //       // NOTE: For Android, the above is limited as we can't include a TextInput inside Alert
-  //       // A better approach would be using a modal component with TextInput
-  //       // Consider implementing a custom modal dialog for Android
-  //     }
-  //   };
 
   return (
     <>

@@ -3,13 +3,9 @@ import * as Haptics from "expo-haptics";
 
 type CreateNoteParams = {
   createNote: (title: string) => string;
-  onSuccess: (noteId: string) => void;
 };
 
-export const showCreateNoteDialog = ({
-  createNote,
-  onSuccess,
-}: CreateNoteParams) => {
+export const showCreateNoteDialog = ({ createNote }: CreateNoteParams) => {
   // iOS implementation
   if (Platform.OS === "ios") {
     Alert.prompt(
@@ -28,7 +24,6 @@ export const showCreateNoteDialog = ({
               const newNoteId = createNote(noteTitle);
 
               console.log("New note created:", newNoteId);
-              onSuccess(newNoteId);
 
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             }
@@ -51,7 +46,6 @@ export const showCreateNoteDialog = ({
           // For Android, you'd ideally implement a custom modal with TextInput
           const noteTitle = `Note ${new Date().toLocaleDateString()}`;
           const newNoteId = createNote(noteTitle);
-          onSuccess(newNoteId);
         },
       },
     ]);
