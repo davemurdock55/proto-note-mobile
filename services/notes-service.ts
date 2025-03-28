@@ -37,7 +37,7 @@ async function getNotes(): Promise<NoteInfo[]> {
       await fileSystemService.writeNote(
         note.id,
         note.title,
-        `<p>This is note: ${note.title}</p>`
+        `This is note: ${note.title}`
       );
     });
     return notesMock;
@@ -49,7 +49,6 @@ async function readNote(id: string, title: string): Promise<NoteContent> {
     // First try to read from file system
     const localContent = await fileSystemService.readNote(id);
     if (localContent && typeof localContent === "string") {
-      // Don't try to parse HTML content as JSON
       return localContent;
     }
 
@@ -68,7 +67,7 @@ async function readNote(id: string, title: string): Promise<NoteContent> {
       } catch (parseError) {
         console.warn("JSON parsing error:", parseError);
         // Return a fallback content instead of propagating the error
-        return "<p>Error loading content</p>";
+        return "Error loading content";
       }
     } else {
       // Otherwise treat as direct content
@@ -78,7 +77,7 @@ async function readNote(id: string, title: string): Promise<NoteContent> {
     }
   } catch (error) {
     console.warn(`Failed to fetch note "${id}", using empty content`, error);
-    return `<p>This is note: ${id}</p>`;
+    return `This is note: ${id}`;
   }
 }
 

@@ -1,18 +1,21 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 
-interface SimpleEditorProps {
+interface TextEditorProps {
   initialValue: string;
   onChange: (content: string) => void;
 }
 
-export const SimpleEditor: React.FC<SimpleEditorProps> = ({
+export const TextEditor: React.FC<TextEditorProps> = ({
   initialValue,
   onChange,
 }) => {
-  // Strip HTML tags for display in TextInput
-  const plainText = initialValue.replace(/<[^>]*>/g, "");
-  const [text, setText] = useState(plainText);
+  const [text, setText] = useState(initialValue);
+
+  // Initialize text when the initialValue changes
+  useEffect(() => {
+    setText(initialValue);
+  }, [initialValue]);
 
   return (
     <View style={styles.container}>
@@ -22,8 +25,7 @@ export const SimpleEditor: React.FC<SimpleEditorProps> = ({
         value={text}
         onChangeText={(newText) => {
           setText(newText);
-          // Wrap in paragraph tags to maintain HTML structure
-          onChange(`<p>${newText}</p>`);
+          onChange(newText);
         }}
       />
     </View>

@@ -1,36 +1,7 @@
 import * as FileSystem from "expo-file-system";
 import { NoteContent, NoteInfo } from "@/shared/models";
-import { extractContentFromHtml } from "@/utils/html-utils";
 
 const NOTES_DIRECTORY = `${FileSystem.documentDirectory}notes/`;
-
-// Fallback implementation if the imported function is not available
-const processHtml = (html: string): string => {
-  if (!html) return "<p>Start writing...</p>";
-
-  try {
-    // If extractContentFromHtml is available, use it
-    if (typeof extractContentFromHtml === "function") {
-      return extractContentFromHtml(html);
-    }
-
-    // Otherwise provide a minimal implementation
-    if (!html.includes("<html>") && !html.includes("<!DOCTYPE")) {
-      return html;
-    }
-
-    // Simple body content extraction
-    const bodyMatch = /<body[^>]*>([\s\S]*)<\/body>/i.exec(html);
-    if (bodyMatch && bodyMatch[1]) {
-      return bodyMatch[1].trim();
-    }
-
-    return html;
-  } catch (error) {
-    console.warn("Error processing HTML:", error);
-    return html || "<p>Start writing...</p>";
-  }
-};
 
 // Initialize notes directory if it doesn't exist
 async function initializeDirectory(): Promise<void> {
@@ -66,27 +37,23 @@ async function readNoteFromFiles(id: string): Promise<NoteContent> {
   try {
     await initializeDirectory();
     const sanitizedId = sanitizeFilename(id);
-    const path = `${NOTES_DIRECTORY}${sanitizedId}.content`;
+    const path = `${NOTES_DIRECTORY}${sanitizedId}.txt`;
 
     const fileInfo = await FileSystem.getInfoAsync(path);
     if (!fileInfo.exists) {
       console.warn(`Note content file does not exist: ${path}`);
-      return `<p>Note content not found</p>`;
+      return "Note content not found";
     }
 
-    const rawContent = await FileSystem.readAsStringAsync(path);
+    const content = await FileSystem.readAsStringAsync(path);
     console.log(
-      `Successfully read content, length: ${rawContent.length} characters`
+      `Successfully read content, length: ${content.length} characters`
     );
-
-    // Extract just the content portion
-    const content = processHtml(rawContent);
-    console.log(`Extracted content length: ${content.length} characters`);
 
     return content;
   } catch (error) {
     console.warn(`Failed to read note with ID: ${id}`, error);
-    return `<p>Error reading note content</p>`;
+    return `Error reading note content`; // Plain text error message
   }
 }
 
@@ -98,7 +65,7 @@ async function writeNoteFromFiles(
   try {
     await initializeDirectory();
     const sanitizedId = sanitizeFilename(id);
-    const contentPath = `${NOTES_DIRECTORY}${sanitizedId}.content`;
+    const contentPath = `${NOTES_DIRECTORY}${sanitizedId}.txt`;
     const metaPath = `${NOTES_DIRECTORY}${sanitizedId}.meta.json`;
 
     console.log(`Writing note with ID "${id}" (sanitized: "${sanitizedId}")`);
@@ -140,11 +107,10 @@ async function createNoteFromFiles(
 ): Promise<boolean> {
   await initializeDirectory();
   const metaPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.meta.json`;
-  const contentPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.content`;
+  const contentPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.txt`;
 
   try {
-    // Create with valid HTML content instead of empty string
-    await FileSystem.writeAsStringAsync(contentPath, "<p>Start writing...</p>");
+    await FileSystem.writeAsStringAsync(contentPath, "Start writing...");
 
     // Create metadata file
     const metadata: NoteInfo = {
@@ -163,7 +129,7 @@ async function createNoteFromFiles(
 
 async function deleteNoteFromFiles(id: string): Promise<boolean> {
   await initializeDirectory();
-  const contentPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.content`;
+  const contentPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.txt`;
   const metaPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.meta.json`;
 
   try {

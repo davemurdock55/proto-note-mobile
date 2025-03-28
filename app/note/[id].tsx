@@ -11,7 +11,7 @@ import {
 } from "@/store/notesStore";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { fileSystemService } from "@/services/file-system-service";
-import { SimpleEditor } from "@/components/SimpleEditor";
+import { TextEditor } from "@/components/TextEditor";
 
 // Define these outside of the NotePage component with proper types
 const BackButton = ({ onPress }: { onPress: () => void }) => (
@@ -286,7 +286,7 @@ export default function NotePage() {
           <Text>Loading note...</Text>
         </View>
       ) : (
-        <SimpleEditor
+        <TextEditor
           key={selectedNote?.id || String(id)}
           initialValue={editorContent}
           onChange={(newContent) => {
