@@ -191,35 +191,38 @@ TaskManager.defineTask(SYNC_TASK_NAME, async () => {
   }
 });
 
+async function registerSyncTask() {
+  await BackgroundFetch.registerTaskAsync(SYNC_TASK_NAME, {
+    minimumInterval: 15 * 60, // 15 minutes
+    stopOnTerminate: false,
+    startOnBoot: true,
+  });
+  console.log("Background sync task registered");
+}
+
+async function unregisterSyncTask() {
+  await BackgroundFetch.unregisterTaskAsync(SYNC_TASK_NAME);
+  console.log("Background sync task unregistered");
+}
+
+async function isSyncTaskRegistered() {
+  return await TaskManager.isTaskRegisteredAsync(SYNC_TASK_NAME);
+}
+
+async function triggerManualSync() {
+  // Check if task is registered before attempting to execute
+  const isRegistered = await TaskManager.isTaskRegisteredAsync(SYNC_TASK_NAME);
+  if (isRegistered) {
+    // Use the same function that the background task uses
+    return await performSyncTask();
+  } else {
+    console.warn(`Task ${SYNC_TASK_NAME} not registered`);
+  }
+}
+
 export const syncService = {
-  async registerSyncTask() {
-    await BackgroundFetch.registerTaskAsync(SYNC_TASK_NAME, {
-      minimumInterval: 15 * 60, // 15 minutes
-      stopOnTerminate: false,
-      startOnBoot: true,
-    });
-    console.log("Background sync task registered");
-  },
-
-  async unregisterSyncTask() {
-    await BackgroundFetch.unregisterTaskAsync(SYNC_TASK_NAME);
-    console.log("Background sync task unregistered");
-  },
-
-  async isSyncTaskRegistered() {
-    return await TaskManager.isTaskRegisteredAsync(SYNC_TASK_NAME);
-  },
-
-  async triggerManualSync() {
-    // Check if task is registered before attempting to execute
-    const isRegistered = await TaskManager.isTaskRegisteredAsync(
-      SYNC_TASK_NAME
-    );
-    if (isRegistered) {
-      // Use the same function that the background task uses
-      return await performSyncTask();
-    } else {
-      console.warn(`Task ${SYNC_TASK_NAME} not registered`);
-    }
-  },
+  registerSyncTask,
+  unregisterSyncTask,
+  isSyncTaskRegistered,
+  triggerManualSync,
 };
