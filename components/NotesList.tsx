@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import NotesListItem from "./NotesListItem";
 import { useAtomValue, useSetAtom } from "jotai";
-import { notesAtom, selectedNoteIndexAtom } from "@/store";
+import { notesAtom, selectedNoteIndexAtom } from "@/store/notesStore";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system";
 

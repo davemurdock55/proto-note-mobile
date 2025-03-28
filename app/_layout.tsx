@@ -10,7 +10,7 @@ import { useState, useRef, useEffect } from "react";
 import * as Haptics from "expo-haptics";
 import AccountDropdown from "@/components/AccountDropdown";
 import { showCreateNoteDialog } from "@/components/dialogs/CreateNoteDialog";
-import { createEmptyNoteAtom } from "@/store";
+import { createEmptyNoteAtom } from "@/store/notesStore";
 
 // Configure Reanimated logger before the component
 configureReanimatedLogger({

@@ -7,7 +7,7 @@ import Reanimated, {
   useAnimatedStyle,
 } from "react-native-reanimated";
 import { useSetAtom } from "jotai";
-import { deleteNoteAtom, selectedNoteIndexAtom } from "@/store";
+import { deleteNoteAtom, selectedNoteIndexAtom } from "@/store/notesStore";
 
 interface SwipeableRefType {
   close: () => void;

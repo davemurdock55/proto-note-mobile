@@ -45,7 +45,7 @@ async function performSyncTask() {
 
       if (!remoteNote || localNote.lastEditTime > remoteNote.lastEditTime) {
         // Local note is newer or doesn't exist remotely - upload it
-        const content = await fileSystemService.readNote(localNote.title);
+        const content = await fileSystemService.readNote(localNote.id);
         try {
           await fetch(`${API_BASE_URL}/${encodeURIComponent(id)}`, {
             method: "PUT",
@@ -137,7 +137,7 @@ TaskManager.defineTask(SYNC_TASK_NAME, async () => {
 
       if (!remoteNote || localNote.lastEditTime > remoteNote.lastEditTime) {
         // Local note is newer or doesn't exist remotely - upload it
-        const content = await fileSystemService.readNote(localNote.title);
+        const content = await fileSystemService.readNote(localNote.id);
         try {
           await fetch(`${API_BASE_URL}/${encodeURIComponent(id)}`, {
             method: "PUT",

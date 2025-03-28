@@ -34,23 +34,51 @@ export const selectedNoteIndexAtom = atom<number | null>(null);
  * Async atom that fetches the full content of the selected note
  * Returns null when no note is selected or notes haven't loaded yet
  */
-const selectedNoteAtomAsync = atom(async (get) => {
-  const notes = get(notesAtom);
-  const selectedNoteIndex = get(selectedNoteIndexAtom);
+const selectedNoteAtomAsync = atom(
+  // Read function (same as before)
+  async (get) => {
+    const notes = get(notesAtom);
+    const selectedNoteIndex = get(selectedNoteIndexAtom);
 
-  if (selectedNoteIndex == null || !notes) return null;
+    // Ensure we have a valid index
+    if (
+      selectedNoteIndex === null ||
+      !Number.isInteger(selectedNoteIndex) ||
+      !notes ||
+      selectedNoteIndex < 0 ||
+      selectedNoteIndex >= notes.length
+    ) {
+      console.log("Invalid selected note index:", selectedNoteIndex);
+      return null;
+    }
 
-  const selectedNote = notes[selectedNoteIndex];
-  const noteContent = await noteService.readNote(
-    selectedNote.id,
-    selectedNote.title
-  );
+    try {
+      const selectedNote = notes[selectedNoteIndex];
+      console.log(
+        `Loading content for note: ${selectedNote.id} at index ${selectedNoteIndex}`
+      );
 
-  return {
-    ...selectedNote,
-    content: noteContent,
-  };
-});
+      const noteContent = await noteService.readNote(
+        selectedNote.id,
+        selectedNote.title
+      );
+
+      return {
+        ...selectedNote,
+        content: noteContent,
+      };
+    } catch (error) {
+      console.error("Error loading selected note:", error);
+      return null;
+    }
+  },
+  // Add a write function that just passes through
+  // This makes it a writable atom
+  (get, set, update) => {
+    // update will be a Promise resolved with the note data
+    return update;
+  }
+);
 
 /**
  * Exported atom for accessing the currently selected note with its content
@@ -77,34 +105,59 @@ export const saveNoteAtom = atom(
   async (get, set, newContent: NoteContent) => {
     const notes = get(notesAtom);
     const selectedNote = get(selectedNoteAtom);
+    const selectedIndex = get(selectedNoteIndexAtom);
 
-    if (!selectedNote || !notes) return;
+    if (!selectedNote || !notes || selectedIndex === null) return;
 
-    // Save to API
-    const success = await noteService.writeNote(
-      selectedNote.id,
-      selectedNote.title,
-      newContent
-    );
-    if (!success) return;
+    console.log(`Saving note: ${selectedNote.id} at index ${selectedIndex}`);
+    console.log(`Content length: ${newContent.length}`);
 
-    // update the saved notes's last edit time
-    set(
-      // use jotai's set function
-      notesAtom, // to update the notesAtom
-      notes.map((note) => {
-        // for all of the notes in our notes array (in the jotai atom state)
-        // if the note is the currently selected note
-        if (note.title === selectedNote.title) {
-          return {
-            ...note,
-            lastEditTime: Date.now(), // only updating the last edit time
-          };
-        }
-        // if the current note is not the selected note, just return it and continue
-        return note;
-      })
-    );
+    try {
+      // Save to API/filesystem
+      const success = await noteService.writeNote(
+        selectedNote.id,
+        selectedNote.title,
+        newContent
+      );
+
+      if (success) {
+        console.log(`Saved content successfully`);
+
+        // Keep track of the ID we're working with
+        const selectedNoteId = selectedNote.id;
+
+        // Update the note's lastEditTime in the local state to ensure it's fresh
+        const updatedNotes = notes.map((note) => {
+          if (note.id === selectedNoteId) {
+            return {
+              ...note,
+              lastEditTime: Date.now(), // Update the edit time
+            };
+          }
+          return note;
+        });
+
+        // Update the notes list with updated timestamps
+        set(notesAtom, updatedNotes);
+
+        // Force a full refresh with a small delay to ensure files are written
+        set(selectedNoteIndexAtom, null);
+        setTimeout(() => {
+          const currentNotes = get(notesAtom);
+          if (currentNotes) {
+            const index = currentNotes.findIndex(
+              (note) => note.id === selectedNoteId
+            );
+            if (index !== -1) {
+              set(selectedNoteIndexAtom, index);
+              console.log(`Re-selected note at index ${index}`);
+            }
+          }
+        }, 300); // Increase timeout slightly to ensure file is fully written
+      }
+    } catch (error) {
+      console.error("Error saving note:", error);
+    }
   }
 );
 

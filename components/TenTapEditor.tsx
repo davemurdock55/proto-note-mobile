@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   SafeAreaView,
   KeyboardAvoidingView,
@@ -12,6 +12,7 @@ import {
   TenTapStartKit,
   CoreBridge,
 } from "@10play/tentap-editor";
+import { extractContentFromHtml } from "@/utils/html-utils";
 
 // Define your custom CSS
 const customCSS = `
@@ -20,25 +21,75 @@ const customCSS = `
 }
 `;
 
-export const TenTapEditor = ({
+// Define the props interface with proper types
+interface TenTapEditorProps {
+  initialValue?: string;
+  onChange?: (content: string) => void;
+}
+
+export const TenTapEditor: React.FC<TenTapEditorProps> = ({
   initialValue = "<p>Start writing here...</p>",
   onChange,
 }) => {
-  const [content, setContent] = useState(initialValue);
+  // Add inline fallback for extractContentFromHtml to handle potential import issues
+  const processHtml = (html: string): string => {
+    if (!html) return "<p>Start writing...</p>";
+
+    try {
+      // If extractContentFromHtml is available, use it
+      if (typeof extractContentFromHtml === "function") {
+        return extractContentFromHtml(html);
+      }
+
+      // Otherwise provide a minimal implementation
+      if (!html.includes("<html>") && !html.includes("<!DOCTYPE")) {
+        return html;
+      }
+
+      // Simple body content extraction
+      const bodyMatch = /<body[^>]*>([\s\S]*)<\/body>/i.exec(html);
+      if (bodyMatch && bodyMatch[1]) {
+        return bodyMatch[1].trim();
+      }
+
+      return html;
+    } catch (error) {
+      console.warn("Error processing HTML:", error);
+      return html || "<p>Start writing...</p>";
+    }
+  };
+
+  // Ensure initialValue is never undefined and is just content, not a full document
+  const safeInitialValue =
+    initialValue && typeof initialValue === "string"
+      ? !initialValue.includes("<html>")
+        ? initialValue
+        : processHtml(initialValue)
+      : "<p>Start writing...</p>";
+
+  const [content, setContent] = useState(safeInitialValue);
+
+  useEffect(() => {
+    if (initialValue && typeof initialValue === "string") {
+      const processedValue = !initialValue.includes("<html>")
+        ? initialValue
+        : processHtml(initialValue);
+
+      setContent(processedValue);
+    }
+  }, [initialValue]);
 
   const editor = useEditorBridge({
     autofocus: true,
     avoidIosKeyboard: true,
     initialContent: content,
-    onChange: (html) => {
-      setContent(html);
-      if (onChange) onChange(html);
+    onChange: (html?: string) => {
+      if (html) {
+        setContent(html);
+        if (onChange) onChange(html);
+      }
     },
-    bridgeExtensions: [
-      // It is important to spread StarterKit BEFORE our extended plugin
-      ...TenTapStartKit,
-      CoreBridge.configureCSS(customCSS), // Custom font for all text
-    ],
+    bridgeExtensions: [...TenTapStartKit, CoreBridge.configureCSS(customCSS)],
   });
 
   return (
@@ -62,7 +113,6 @@ const styles = StyleSheet.create({
   editor: {
     flex: 1,
     padding: 10,
-    // Remove fontFamily from here as it won't affect the webview content
   },
   keyboardAvoidingView: {
     position: "absolute",

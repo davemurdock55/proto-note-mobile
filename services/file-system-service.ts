@@ -1,125 +1,192 @@
 import * as FileSystem from "expo-file-system";
 import { NoteContent, NoteInfo } from "@/shared/models";
+import { extractContentFromHtml } from "@/utils/html-utils";
 
 const NOTES_DIRECTORY = `${FileSystem.documentDirectory}notes/`;
 
-export const fileSystemService = {
-  async initializeDirectory(): Promise<void> {
-    const dirInfo = await FileSystem.getInfoAsync(NOTES_DIRECTORY);
-    if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(NOTES_DIRECTORY, {
-        intermediates: true,
-      });
+// Fallback implementation if the imported function is not available
+const processHtml = (html: string): string => {
+  if (!html) return "<p>Start writing...</p>";
+
+  try {
+    // If extractContentFromHtml is available, use it
+    if (typeof extractContentFromHtml === "function") {
+      return extractContentFromHtml(html);
     }
-  },
 
-  async getNotes(): Promise<NoteInfo[]> {
-    // This method stays mostly the same
-    await this.initializeDirectory();
-    const files = await FileSystem.readDirectoryAsync(NOTES_DIRECTORY);
-    const metadataFiles = files.filter((file) => file.endsWith(".meta.json"));
+    // Otherwise provide a minimal implementation
+    if (!html.includes("<html>") && !html.includes("<!DOCTYPE")) {
+      return html;
+    }
 
-    const notesPromises = metadataFiles.map(async (file) => {
-      const content = await FileSystem.readAsStringAsync(
-        `${NOTES_DIRECTORY}${file}`
-      );
-      return JSON.parse(content) as NoteInfo;
+    // Simple body content extraction
+    const bodyMatch = /<body[^>]*>([\s\S]*)<\/body>/i.exec(html);
+    if (bodyMatch && bodyMatch[1]) {
+      return bodyMatch[1].trim();
+    }
+
+    return html;
+  } catch (error) {
+    console.warn("Error processing HTML:", error);
+    return html || "<p>Start writing...</p>";
+  }
+};
+
+// Initialize notes directory if it doesn't exist
+async function initializeDirectory(): Promise<void> {
+  // Get directory info
+  const dirInfo = await FileSystem.getInfoAsync(NOTES_DIRECTORY);
+  if (!dirInfo.exists) {
+    // Create directory if it doesn't exist
+    await FileSystem.makeDirectoryAsync(NOTES_DIRECTORY, {
+      intermediates: true,
     });
+  }
+}
 
-    return Promise.all(notesPromises);
-  },
+async function getNotesFromFiles(): Promise<NoteInfo[]> {
+  // This method stays mostly the same
+  await initializeDirectory();
+  // Get all files in the directory
+  const files = await FileSystem.readDirectoryAsync(NOTES_DIRECTORY);
+  // Filter out metadata files
+  const metadataFiles = files.filter((file) => file.endsWith(".meta.json"));
 
-  // Change to use ID instead of title
-  async readNote(id: string): Promise<NoteContent> {
-    await this.initializeDirectory();
-    const path = `${NOTES_DIRECTORY}${this.sanitizeFilename(id)}.content`;
+  const notesPromises = metadataFiles.map(async (file) => {
+    const content = await FileSystem.readAsStringAsync(
+      `${NOTES_DIRECTORY}${file}`
+    );
+    return JSON.parse(content) as NoteInfo;
+  });
 
-    try {
-      return await FileSystem.readAsStringAsync(path);
-    } catch (error) {
-      console.warn(`Failed to read note with ID: ${id}`, error);
-      return `<p>Note content unavailable</p>`;
+  return Promise.all(notesPromises);
+}
+
+async function readNoteFromFiles(id: string): Promise<NoteContent> {
+  try {
+    await initializeDirectory();
+    const sanitizedId = sanitizeFilename(id);
+    const path = `${NOTES_DIRECTORY}${sanitizedId}.content`;
+
+    const fileInfo = await FileSystem.getInfoAsync(path);
+    if (!fileInfo.exists) {
+      console.warn(`Note content file does not exist: ${path}`);
+      return `<p>Note content not found</p>`;
     }
-  },
 
-  // Update to use ID for filenames
-  async writeNote(
-    id: string,
-    title: string,
-    content: NoteContent
-  ): Promise<boolean> {
-    await this.initializeDirectory();
-    // Use ID for filenames instead of title
-    const contentPath = `${NOTES_DIRECTORY}${this.sanitizeFilename(
-      id
-    )}.content`;
-    const metaPath = `${NOTES_DIRECTORY}${this.sanitizeFilename(id)}.meta.json`;
+    const rawContent = await FileSystem.readAsStringAsync(path);
+    console.log(
+      `Successfully read content, length: ${rawContent.length} characters`
+    );
 
-    try {
-      // Write content file
-      const contentString = content || "";
-      await FileSystem.writeAsStringAsync(contentPath, contentString);
+    // Extract just the content portion
+    const content = processHtml(rawContent);
+    console.log(`Extracted content length: ${content.length} characters`);
 
-      // Update metadata file
-      const metadata: NoteInfo = {
-        id: id,
-        title: title,
-        lastEditTime: Date.now(),
-      };
+    return content;
+  } catch (error) {
+    console.warn(`Failed to read note with ID: ${id}`, error);
+    return `<p>Error reading note content</p>`;
+  }
+}
 
-      await FileSystem.writeAsStringAsync(metaPath, JSON.stringify(metadata));
-      return true;
-    } catch (error) {
-      console.error(`Failed to write note with ID: ${id}`, error);
-      return false;
+async function writeNoteFromFiles(
+  id: string,
+  title: string,
+  content: NoteContent
+): Promise<boolean> {
+  try {
+    await initializeDirectory();
+    const sanitizedId = sanitizeFilename(id);
+    const contentPath = `${NOTES_DIRECTORY}${sanitizedId}.content`;
+    const metaPath = `${NOTES_DIRECTORY}${sanitizedId}.meta.json`;
+
+    console.log(`Writing note with ID "${id}" (sanitized: "${sanitizedId}")`);
+    console.log(`Content path: ${contentPath}`);
+    console.log(`Metadata path: ${metaPath}`);
+
+    // Ensure content is a string
+    const contentString =
+      typeof content === "string" ? content : String(content);
+
+    // Write content file
+    await FileSystem.writeAsStringAsync(contentPath, contentString);
+
+    // Verify write
+    const fileInfo = await FileSystem.getInfoAsync(contentPath);
+    if (!fileInfo.exists) {
+      throw new Error(`Failed to write content file at ${contentPath}`);
     }
-  },
 
-  async createNote(id: string, title: string): Promise<boolean> {
-    await this.initializeDirectory();
-    const metaPath = `${NOTES_DIRECTORY}${this.sanitizeFilename(id)}.meta.json`;
-    const contentPath = `${NOTES_DIRECTORY}${this.sanitizeFilename(
-      id
-    )}.content`;
+    // Write metadata with current timestamp
+    const metadata: NoteInfo = {
+      id,
+      title,
+      lastEditTime: Date.now(),
+    };
 
-    try {
-      // Create empty content file
-      await FileSystem.writeAsStringAsync(contentPath, "");
+    await FileSystem.writeAsStringAsync(metaPath, JSON.stringify(metadata));
 
-      // Create metadata file
-      const metadata: NoteInfo = {
-        id: id,
-        title: title,
-        lastEditTime: Date.now(),
-      };
+    return true;
+  } catch (error) {
+    console.error(`Failed to write note with ID: ${id}`, error);
+    return false;
+  }
+}
 
-      await FileSystem.writeAsStringAsync(metaPath, JSON.stringify(metadata));
-      return true;
-    } catch (error) {
-      console.error(`Failed to create note file: ${title}`, error);
-      return false;
-    }
-  },
+async function createNoteFromFiles(
+  id: string,
+  title: string
+): Promise<boolean> {
+  await initializeDirectory();
+  const metaPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.meta.json`;
+  const contentPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.content`;
 
-  async deleteNote(id: string): Promise<boolean> {
-    await this.initializeDirectory();
-    const contentPath = `${NOTES_DIRECTORY}${this.sanitizeFilename(
-      id
-    )}.content`;
-    const metaPath = `${NOTES_DIRECTORY}${this.sanitizeFilename(id)}.meta.json`;
+  try {
+    // Create with valid HTML content instead of empty string
+    await FileSystem.writeAsStringAsync(contentPath, "<p>Start writing...</p>");
 
-    try {
-      // Delete both files
-      await FileSystem.deleteAsync(contentPath, { idempotent: true });
-      await FileSystem.deleteAsync(metaPath, { idempotent: true });
-      return true;
-    } catch (error) {
-      console.error(`Failed to delete note file: ${id}`, error);
-      return false;
-    }
-  },
+    // Create metadata file
+    const metadata: NoteInfo = {
+      id: id,
+      title: title,
+      lastEditTime: Date.now(),
+    };
 
-  sanitizeFilename(filename: string): string {
-    return filename.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-  },
+    await FileSystem.writeAsStringAsync(metaPath, JSON.stringify(metadata));
+    return true;
+  } catch (error) {
+    console.error(`Failed to create note file: ${title}`, error);
+    return false;
+  }
+}
+
+async function deleteNoteFromFiles(id: string): Promise<boolean> {
+  await initializeDirectory();
+  const contentPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.content`;
+  const metaPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.meta.json`;
+
+  try {
+    // Delete both files
+    await FileSystem.deleteAsync(contentPath, { idempotent: true });
+    await FileSystem.deleteAsync(metaPath, { idempotent: true });
+    return true;
+  } catch (error) {
+    console.error(`Failed to delete note file: ${id}`, error);
+    return false;
+  }
+}
+
+function sanitizeFilename(filename: string): string {
+  return filename.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+}
+
+export const fileSystemService = {
+  initializeDirectory,
+  getNotes: getNotesFromFiles,
+  readNote: readNoteFromFiles,
+  writeNote: writeNoteFromFiles,
+  createNote: createNoteFromFiles,
+  deleteNote: deleteNoteFromFiles,
+  sanitizeFilename,
 };

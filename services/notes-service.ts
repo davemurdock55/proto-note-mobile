@@ -49,19 +49,34 @@ export const noteService = {
     try {
       // First try to read from file system
       const localContent = await fileSystemService.readNote(id);
-      if (localContent) {
+      if (localContent && typeof localContent === "string") {
+        // Don't try to parse HTML content as JSON
         return localContent;
       }
 
       // If not found locally, try API
       const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(id)}`);
       if (!response.ok) throw new Error("Failed to fetch note content");
-      const data = await response.json();
 
-      // Save to file system for future access
-      await fileSystemService.writeNote(id, title, data.content);
+      const contentType = response.headers.get("content-type");
 
-      return data.content;
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          // Safely parse JSON
+          const data = await response.json();
+          await fileSystemService.writeNote(id, title, data.content);
+          return data.content;
+        } catch (parseError) {
+          console.warn("JSON parsing error:", parseError);
+          // Return a fallback content instead of propagating the error
+          return "<p>Error loading content</p>";
+        }
+      } else {
+        // Otherwise treat as direct content
+        const content = await response.text();
+        await fileSystemService.writeNote(id, title, content);
+        return content;
+      }
     } catch (error) {
       console.warn(`Failed to fetch note "${id}", using empty content`, error);
       return `<p>This is note: ${id}</p>`;
@@ -85,7 +100,7 @@ export const noteService = {
       // Then try to sync with API
       try {
         const response = await fetch(
-          `${API_BASE_URL}/${encodeURIComponent(title)}`,
+          `${API_BASE_URL}/${encodeURIComponent(id)}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
