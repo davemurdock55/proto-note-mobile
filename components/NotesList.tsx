@@ -20,11 +20,11 @@ const NotesList = () => {
   const setSelectedIndex = useSetAtom(selectedNoteIndexAtom);
   const router = useRouter();
 
-  const handleNotePress = async (index: number, id: string) => {
+  const handleNotePress = async (index: number, title: string) => {
     // First update the selected index
     await setSelectedIndex(index);
     // Then navigate programmatically
-    router.push(`/note/${id}`);
+    router.push(`/note/${encodeURIComponent(title)}`);
   };
 
   const clearAllData = async () => {
@@ -61,14 +61,13 @@ const NotesList = () => {
         data={notes}
         renderItem={({ item, index }) => (
           <NotesListItem
-            id={item.id}
             title={item.title}
             lastEditTime={item.lastEditTime}
-            onPress={() => handleNotePress(index, item.id)}
+            onPress={() => handleNotePress(index, item.title)}
             index={index}
           />
         )}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.title}
       />
       {/* <Pressable onPressIn={handleResetPress} style={styles.resetButton}>
         <Text style={styles.resetButtonText}>Reset All Data</Text>

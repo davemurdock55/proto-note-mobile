@@ -41,7 +41,8 @@ const SaveButton = ({ onPress }: { onPress: () => void }) => (
 );
 
 export default function NotePage() {
-  const { id } = useLocalSearchParams();
+  const { title: paramTitle } = useLocalSearchParams();
+  const title = decodeURIComponent(String(paramTitle || ""));
   const navigation = useNavigation();
   const notes = useAtomValue(notesAtom);
   const selectedNote = useAtomValue(selectedNoteAtom);
@@ -75,31 +76,25 @@ export default function NotePage() {
       }
 
       console.log(
-        `Manually saving note ${id} with content length: ${editorContent.length}`
+        `Manually saving note ${title} with content length: ${editorContent.length}`
       );
 
       // Directly save to file system for immediate persistence
       // This bypasses the atom flow to ensure content is saved to disk right away
-      fileSystemService
-        .writeNote(
-          String(id),
-          selectedNote?.title || "Untitled Note",
-          editorContent
-        )
-        .then((success) => {
-          if (success) {
-            console.log(`Manual save to file system successful`);
-            // Only update our reference after confirmed save
-            lastSavedContentRef.current = editorContent;
+      fileSystemService.writeNote(title, editorContent).then((success) => {
+        if (success) {
+          console.log(`Manual save to file system successful`);
+          // Only update our reference after confirmed save
+          lastSavedContentRef.current = editorContent;
 
-            // Also trigger the atom-based save to update UI state
-            saveNote(editorContent);
-          } else {
-            console.error("Manual save to file system failed");
-          }
-        });
+          // Also trigger the atom-based save to update UI state
+          saveNote(editorContent);
+        } else {
+          console.error("Manual save to file system failed");
+        }
+      });
     }
-  }, [editorContent, id, selectedNote?.title, saveNote]);
+  }, [editorContent, title, selectedNote?.title, saveNote]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -134,33 +129,27 @@ export default function NotePage() {
         );
 
         // Directly save to file system first
-        fileSystemService
-          .writeNote(
-            String(id),
-            selectedNote?.title || "Untitled Note",
-            content
-          )
-          .then((success) => {
-            if (success) {
-              console.log(`Autosave to file system successful`);
-              // Update reference after confirmed save
-              lastSavedContentRef.current = content;
+        fileSystemService.writeNote(title, content).then((success) => {
+          if (success) {
+            console.log(`Autosave to file system successful`);
+            // Update reference after confirmed save
+            lastSavedContentRef.current = content;
 
-              // Then update state through the atom
-              saveNote(content);
-            } else {
-              console.error("Autosave to file system failed");
-            }
-          });
+            // Then update state through the atom
+            saveNote(content);
+          } else {
+            console.error("Autosave to file system failed");
+          }
+        });
       }, 2000);
     },
-    [id, selectedNote?.title, saveNote]
+    [title, selectedNote?.title, saveNote]
   );
 
   // Update editor content when selected note changes
   useEffect(() => {
-    if (selectedNote?.content && selectedNote.id === id) {
-      // Only update editor content if it hasn't been initialized yet or if selected note ID changed
+    if (selectedNote?.content && selectedNote.title === title) {
+      // Only update editor content if it hasn't been initialized yet or if selected note title changed
       if (
         !editorInitializedRef.current ||
         selectedNote.content !== editorContent
@@ -172,81 +161,59 @@ export default function NotePage() {
       }
       setIsLoading(false);
     }
-  }, [selectedNote?.id, selectedNote?.content, id]);
+  }, [selectedNote?.title, selectedNote?.content, title]);
 
   useEffect(() => {
     const loadNote = async () => {
-      // Only start loading if we're not already loading
-      if (!isLoading) {
-        setIsLoading(true);
-        initialLoadRef.current = true;
-        editorInitializedRef.current = false;
-        console.log("Looking for note with ID:", id);
+      // REMOVE THIS CONDITION - it prevents initial loading
+      // if (!isLoading) {
+      setIsLoading(true);
+      initialLoadRef.current = true;
+      editorInitializedRef.current = false;
+      console.log("Looking for note with title:", title);
 
-        try {
-          // Try direct file system read first
-          const directContent = await fileSystemService.readNote(String(id));
+      try {
+        // Try direct file system read first
+        const directContent = await fileSystemService.readNote(title);
 
-          // Check if content exists and is valid
-          if (
-            directContent &&
-            typeof directContent === "string" &&
-            !directContent.includes("Note content not found")
-          ) {
-            console.log(
-              `Direct file read result: ${directContent.substring(0, 50)}...`
-            );
-            setEditorContent(directContent || "<p>Start writing...</p>");
-            lastSavedContentRef.current =
-              directContent || "<p>Start writing...</p>";
-            setIsLoading(false);
-            editorInitializedRef.current = true;
-            return;
-          }
+        // Add more detailed logging
+        console.log(`Read content result:`, {
+          title,
+          contentType: typeof directContent,
+          length: directContent ? directContent.length : 0,
+          preview: directContent ? directContent.substring(0, 20) : "",
+        });
 
-          // Fall back to notes list
-          if (id && notes) {
-            const noteIndex = notes.findIndex((note) => note.id === id);
-            if (noteIndex !== -1) {
-              setSelectedIndex(noteIndex);
-
-              // Don't schedule additional timeouts - wait for the note content to load
-              // through the other useEffect that watches selectedNote
-            } else {
-              // Note not found in list
-              setEditorContent("<p>Start writing...</p>");
-              lastSavedContentRef.current = "<p>Start writing...</p>";
-              setIsLoading(false);
-              editorInitializedRef.current = true;
-            }
-          } else {
-            // Default content if no notes/id
-            setEditorContent("<p>Start writing...</p>");
-            lastSavedContentRef.current = "<p>Start writing...</p>";
-            setIsLoading(false);
-            editorInitializedRef.current = true;
-          }
-        } catch (error) {
-          console.error("Error loading note content:", error);
-          setEditorContent("<p>Start writing...</p>");
-          lastSavedContentRef.current = "<p>Start writing...</p>";
-          setIsLoading(false);
+        // Check if content exists and is valid
+        if (directContent && typeof directContent === "string") {
+          setEditorContent(directContent);
+          lastSavedContentRef.current = directContent;
+          setIsLoading(false); // Exit loading state regardless of content
           editorInitializedRef.current = true;
+          return;
         }
+
+        // Always exit loading state with a fallback
+        console.log("No content or invalid content, showing fallback");
+        setEditorContent("Start writing...");
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error loading note content:", error);
+        setIsLoading(false);
+        setEditorContent("Start writing...");
       }
+      // } REMOVE CLOSING BRACE
     };
 
     loadNote();
-
-    // Remove isLoading from dependencies to prevent the infinite loop
-  }, [id, notes, setSelectedIndex]);
+  }, [title]); // Simplify dependencies to reduce conflicts
 
   // Effect for updating title
   useEffect(() => {
-    if (selectedNote && selectedNote.id === id) {
+    if (selectedNote && selectedNote.title === title) {
       navigation.setOptions({ title: selectedNote.title });
     }
-  }, [selectedNote, navigation, id]);
+  }, [selectedNote, navigation, title]);
 
   useEffect(() => {
     // Save immediately when navigating away
@@ -265,11 +232,7 @@ export default function NotePage() {
         // Synchronous save attempt since we're navigating away
         // We need to make sure this completes before we leave the screen
         try {
-          fileSystemService.writeNote(
-            String(id),
-            selectedNote?.title || "Untitled Note",
-            editorContent
-          );
+          fileSystemService.writeNote(title, editorContent);
           lastSavedContentRef.current = editorContent;
           console.log("Navigation save complete");
         } catch (error) {
@@ -277,7 +240,7 @@ export default function NotePage() {
         }
       }
     };
-  }, [editorContent, id, selectedNote?.title]);
+  }, [editorContent, title, selectedNote?.title]);
 
   return (
     <View style={styles.container}>
@@ -287,7 +250,7 @@ export default function NotePage() {
         </View>
       ) : (
         <TextEditor
-          key={selectedNote?.id || String(id)}
+          key={selectedNote?.title || title}
           initialValue={editorContent}
           onChange={(newContent) => {
             if (newContent !== editorContent) {

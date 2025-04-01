@@ -20,6 +20,7 @@ async function getNotesFromFiles(): Promise<NoteInfo[]> {
   await initializeDirectory();
   // Get all files in the directory
   const files = await FileSystem.readDirectoryAsync(NOTES_DIRECTORY);
+  console.log("Files in directory:", files);
   // Filter out metadata files
   const metadataFiles = files.filter((file) => file.endsWith(".meta.json"));
 
@@ -33,11 +34,11 @@ async function getNotesFromFiles(): Promise<NoteInfo[]> {
   return Promise.all(notesPromises);
 }
 
-async function readNoteFromFiles(id: string): Promise<NoteContent> {
+async function readNoteFromFiles(title: string): Promise<NoteContent> {
   try {
     await initializeDirectory();
-    const sanitizedId = sanitizeFilename(id);
-    const path = `${NOTES_DIRECTORY}${sanitizedId}.txt`;
+    const sanitizedTitle = sanitizeFilename(title);
+    const path = `${NOTES_DIRECTORY}${sanitizedTitle}.txt`;
 
     const fileInfo = await FileSystem.getInfoAsync(path);
     if (!fileInfo.exists) {
@@ -52,23 +53,24 @@ async function readNoteFromFiles(id: string): Promise<NoteContent> {
 
     return content;
   } catch (error) {
-    console.warn(`Failed to read note with ID: ${id}`, error);
+    console.warn(`Failed to read note with title: ${title}`, error);
     return `Error reading note content`; // Plain text error message
   }
 }
 
 async function writeNoteFromFiles(
-  id: string,
   title: string,
   content: NoteContent
 ): Promise<boolean> {
   try {
     await initializeDirectory();
-    const sanitizedId = sanitizeFilename(id);
-    const contentPath = `${NOTES_DIRECTORY}${sanitizedId}.txt`;
-    const metaPath = `${NOTES_DIRECTORY}${sanitizedId}.meta.json`;
+    const sanitizedTitle = sanitizeFilename(title);
+    const metaPath = `${NOTES_DIRECTORY}${sanitizedTitle}.meta.json`;
+    const contentPath = `${NOTES_DIRECTORY}${sanitizedTitle}.txt`;
 
-    console.log(`Writing note with ID "${id}" (sanitized: "${sanitizedId}")`);
+    console.log(
+      `Writing note with title "${title}" (sanitized: "${sanitizedTitle}")`
+    );
     console.log(`Content path: ${contentPath}`);
     console.log(`Metadata path: ${metaPath}`);
 
@@ -87,7 +89,6 @@ async function writeNoteFromFiles(
 
     // Write metadata with current timestamp
     const metadata: NoteInfo = {
-      id,
       title,
       lastEditTime: Date.now(),
     };
@@ -96,25 +97,22 @@ async function writeNoteFromFiles(
 
     return true;
   } catch (error) {
-    console.error(`Failed to write note with ID: ${id}`, error);
+    console.error(`Failed to write note with title: ${title}`, error);
     return false;
   }
 }
 
-async function createNoteFromFiles(
-  id: string,
-  title: string
-): Promise<boolean> {
+async function createNoteAsFile(title: string): Promise<boolean> {
   await initializeDirectory();
-  const metaPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.meta.json`;
-  const contentPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.txt`;
+  const sanitizedTitle = sanitizeFilename(title);
+  const metaPath = `${NOTES_DIRECTORY}${sanitizedTitle}.meta.json`;
+  const contentPath = `${NOTES_DIRECTORY}${sanitizedTitle}.txt`;
 
   try {
     await FileSystem.writeAsStringAsync(contentPath, "Start writing...");
 
     // Create metadata file
     const metadata: NoteInfo = {
-      id: id,
       title: title,
       lastEditTime: Date.now(),
     };
@@ -127,10 +125,11 @@ async function createNoteFromFiles(
   }
 }
 
-async function deleteNoteFromFiles(id: string): Promise<boolean> {
+async function deleteNoteFromFiles(title: string): Promise<boolean> {
   await initializeDirectory();
-  const contentPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.txt`;
-  const metaPath = `${NOTES_DIRECTORY}${sanitizeFilename(id)}.meta.json`;
+  const sanitizedTitle = sanitizeFilename(title);
+  const metaPath = `${NOTES_DIRECTORY}${sanitizedTitle}.meta.json`;
+  const contentPath = `${NOTES_DIRECTORY}${sanitizedTitle}.txt`;
 
   try {
     // Delete both files
@@ -138,7 +137,7 @@ async function deleteNoteFromFiles(id: string): Promise<boolean> {
     await FileSystem.deleteAsync(metaPath, { idempotent: true });
     return true;
   } catch (error) {
-    console.error(`Failed to delete note file: ${id}`, error);
+    console.error(`Failed to delete note file: ${title}`, error);
     return false;
   }
 }
@@ -152,7 +151,7 @@ export const fileSystemService = {
   getNotes: getNotesFromFiles,
   readNote: readNoteFromFiles,
   writeNote: writeNoteFromFiles,
-  createNote: createNoteFromFiles,
+  createNote: createNoteAsFile,
   deleteNote: deleteNoteFromFiles,
   sanitizeFilename,
 };

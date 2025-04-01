@@ -42,22 +42,19 @@ export default function RootLayout() {
   const handleCreateNotePress = () => {
     showCreateNoteDialog({
       createNote: (title: string) => {
-        // Generate a temporary ID synchronously
-        const tempId = `note-${Date.now()}`;
-
         // Call the async function but don't wait for it
-        createEmptyNote(title).then((actualId) => {
-          if (actualId) {
-            // Use the actual ID once available
-            router.push(`/note/${actualId}`);
+        createEmptyNote(title).then((returnedTitle) => {
+          if (returnedTitle) {
+            // Use the returned title once available
+            router.push(`/note/${encodeURIComponent(returnedTitle)}`);
           } else {
-            // Fallback to using the temp ID
-            router.push(`/note/${tempId}`);
+            // Fallback to using the passed title
+            router.push(`/note/${encodeURIComponent(title)}`);
           }
         });
 
-        // Return the temp ID immediately
-        return tempId;
+        // Return the passed title immediately
+        return title;
       },
     });
   };

@@ -55,13 +55,10 @@ const selectedNoteAtomAsync = atom(
     try {
       const selectedNote = notes[selectedNoteIndex];
       console.log(
-        `Loading content for note: ${selectedNote.id} at index ${selectedNoteIndex}`
+        `Loading content for note: ${selectedNote.title} at index ${selectedNoteIndex}`
       );
 
-      const noteContent = await noteService.readNote(
-        selectedNote.id,
-        selectedNote.title
-      );
+      const noteContent = await noteService.readNote(selectedNote.title);
 
       return {
         ...selectedNote,
@@ -88,7 +85,6 @@ export const selectedNoteAtom = unwrap(
   selectedNoteAtomAsync,
   (prev) =>
     prev ?? {
-      id: "",
       title: "",
       content: "",
       lastEditTime: Date.now(),
@@ -109,13 +105,12 @@ export const saveNoteAtom = atom(
 
     if (!selectedNote || !notes || selectedIndex === null) return;
 
-    console.log(`Saving note: ${selectedNote.id} at index ${selectedIndex}`);
+    console.log(`Saving note: ${selectedNote.title} at index ${selectedIndex}`);
     console.log(`Content length: ${newContent.length}`);
 
     try {
       // Save to API/filesystem
       const success = await noteService.writeNote(
-        selectedNote.id,
         selectedNote.title,
         newContent
       );
@@ -123,12 +118,12 @@ export const saveNoteAtom = atom(
       if (success) {
         console.log(`Saved content successfully`);
 
-        // Keep track of the ID we're working with
-        const selectedNoteId = selectedNote.id;
+        // Keep track of the note's title we're working with
+        const selectedNoteTitle = selectedNote.title;
 
         // Update the note's lastEditTime in the local state to ensure it's fresh
         const updatedNotes = notes.map((note) => {
-          if (note.id === selectedNoteId) {
+          if (note.title === selectedNoteTitle) {
             return {
               ...note,
               lastEditTime: Date.now(), // Update the edit time
@@ -146,7 +141,7 @@ export const saveNoteAtom = atom(
           const currentNotes = get(notesAtom);
           if (currentNotes) {
             const index = currentNotes.findIndex(
-              (note) => note.id === selectedNoteId
+              (note) => note.title === selectedNoteTitle
             );
             if (index !== -1) {
               set(selectedNoteIndexAtom, index);
@@ -171,27 +166,26 @@ export const createEmptyNoteAtom = atom(
     const notes = get(notesAtom);
     if (!notes) return;
 
-    // Generate ID first so it's consistent through the process
-    const newId = `note-${Date.now()}`;
-
-    // Pass the ID to createNote so filesystem uses the same ID
+    // Pass the title to createNote so filesystem uses the same title
     const userTitle = title || `Note ${Date.now()}`;
-    const success = await noteService.createNote(newId, userTitle);
+    const success = await noteService.createNote(userTitle);
 
     if (!success) return;
 
-    // Create new note object with the exact same ID and title
+    // Create new note object with the exact same title
     const newNote: NoteInfo = {
-      id: newId,
       title: userTitle, // Use the actual title user specified
       lastEditTime: Date.now(),
     };
 
     // Add new note to the beginning of the list and select it
-    set(notesAtom, [newNote, ...notes.filter((note) => note.id !== newId)]);
+    set(notesAtom, [
+      newNote,
+      ...notes.filter((note) => note.title !== newNote.title),
+    ]);
     set(selectedNoteIndexAtom, 0);
 
-    return newId;
+    return newNote.title;
   }
 );
 
@@ -199,13 +193,13 @@ export const createEmptyNoteAtom = atom(
  * Action atom for deleting the currently selected note
  * Removes the note via API and updates local state on success
  */
-export const deleteNoteAtom = atom(null, async (get, set, id?: string) => {
+export const deleteNoteAtom = atom(null, async (get, set, title?: string) => {
   const notes = get(notesAtom);
 
   // If title is provided, use it directly
-  if (id) {
+  if (title) {
     // Delete note via API
-    const isDeleted = await noteService.deleteNote(id);
+    const isDeleted = await noteService.deleteNote(title);
 
     if (!isDeleted) return;
 
@@ -214,12 +208,12 @@ export const deleteNoteAtom = atom(null, async (get, set, id?: string) => {
     // Remove deleted note from local state
     set(
       notesAtom,
-      notes.filter((note) => note.id !== id)
+      notes.filter((note) => note.title !== title)
     );
 
     // If the currently selected note is the one being deleted, clear selection
     const selectedNote = get(selectedNoteAtom);
-    if (selectedNote && selectedNote.id === id) {
+    if (selectedNote && selectedNote.title === title) {
       set(selectedNoteIndexAtom, null);
     }
 
@@ -232,14 +226,14 @@ export const deleteNoteAtom = atom(null, async (get, set, id?: string) => {
   if (!selectedNote || !notes) return;
 
   // Delete note via API
-  const isDeleted = await noteService.deleteNote(selectedNote.id);
+  const isDeleted = await noteService.deleteNote(selectedNote.title);
 
   if (!isDeleted) return;
 
   // Remove deleted note from local state
   set(
     notesAtom,
-    notes.filter((note) => note.id !== selectedNote.id)
+    notes.filter((note) => note.title !== selectedNote.title)
   );
 
   // Clear selection

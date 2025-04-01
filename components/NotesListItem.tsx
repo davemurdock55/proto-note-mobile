@@ -17,30 +17,23 @@ interface SwipeableRefType {
 }
 
 type ItemProps = {
-  id: string;
   title: string;
   lastEditTime: number;
   onPress?: () => void;
   index: number;
 };
 
-const NotesListItem = ({
-  id,
-  title,
-  lastEditTime,
-  onPress,
-  index,
-}: ItemProps) => {
+const NotesListItem = ({ title, lastEditTime, onPress, index }: ItemProps) => {
   const formattedDate = new Date(lastEditTime).toLocaleString();
   const swipeableRef = useRef<SwipeableRefType>(null);
   const deleteNote = useSetAtom(deleteNoteAtom);
   const setSelectedIndex = useSetAtom(selectedNoteIndexAtom);
 
-  const handleDelete = (noteId: string) => {
+  const handleDelete = (noteTitle: string) => {
     // First select this note (so it can be deleted)
     setSelectedIndex(index);
     // Then delete it
-    deleteNote(noteId);
+    deleteNote(noteTitle);
     // Close the swipeable
     if (swipeableRef.current !== null) {
       swipeableRef.current?.close();
@@ -78,7 +71,7 @@ const NotesListItem = ({
         >
           <RectButton
             style={styles.deleteButton}
-            onPress={() => handleDelete(id)}
+            onPress={() => handleDelete(title)}
           >
             <Reanimated.Text style={[styles.deleteText, textAnimation]}>
               Delete

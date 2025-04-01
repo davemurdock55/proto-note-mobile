@@ -33,21 +33,21 @@ async function performSyncTask() {
 
     // Map for efficient lookup
     const localNotesMap: Map<string, NoteInfo> = new Map(
-      localNotes.map((note: NoteInfo) => [note.id, note])
+      localNotes.map((note: NoteInfo) => [note.title, note])
     );
     const remoteNotesMap: Map<string, NoteInfo> = new Map(
-      remoteNotes.map((note: NoteInfo) => [note.id, note])
+      remoteNotes.map((note: NoteInfo) => [note.title, note])
     );
 
     // Upload local notes that are newer than remote
-    for (const [id, localNote] of localNotesMap) {
-      const remoteNote = remoteNotesMap.get(id);
+    for (const [title, localNote] of localNotesMap) {
+      const remoteNote = remoteNotesMap.get(title);
 
       if (!remoteNote || localNote.lastEditTime > remoteNote.lastEditTime) {
         // Local note is newer or doesn't exist remotely - upload it
-        const content = await fileSystemService.readNote(localNote.id);
+        const content = await fileSystemService.readNote(localNote.title);
         try {
-          await fetch(`${API_BASE_URL}/${encodeURIComponent(id)}`, {
+          await fetch(`${API_BASE_URL}/${encodeURIComponent(title)}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content }),
@@ -63,29 +63,22 @@ async function performSyncTask() {
     }
 
     // Download remote notes that are newer than local
-    for (const [id, remoteNote] of remoteNotesMap) {
-      const localNote = localNotesMap.get(id);
+    for (const [title, remoteNote] of remoteNotesMap) {
+      const localNote = localNotesMap.get(title);
 
       if (!localNote || remoteNote.lastEditTime > localNote.lastEditTime) {
         // Remote note is newer or doesn't exist locally - download it
         try {
           const response = await fetch(
-            `${API_BASE_URL}/${encodeURIComponent(id)}`
+            `${API_BASE_URL}/${encodeURIComponent(title)}`
           );
           if (response.ok) {
             const data = await response.json();
-            await fileSystemService.writeNote(
-              id,
-              remoteNote.title,
-              data.content
-            );
+            await fileSystemService.writeNote(title, data.content);
             hasChanges = true;
           }
         } catch (error) {
-          console.warn(
-            `Failed to download note during sync: ${remoteNote.title}`,
-            error
-          );
+          console.warn(`Failed to download note during sync: ${title}`, error);
         }
       }
     }
@@ -125,21 +118,21 @@ TaskManager.defineTask(SYNC_TASK_NAME, async () => {
 
     // Map for efficient lookup
     const localNotesMap: Map<string, NoteInfo> = new Map(
-      localNotes.map((note: NoteInfo) => [note.id, note])
+      localNotes.map((note: NoteInfo) => [note.title, note])
     );
     const remoteNotesMap: Map<string, NoteInfo> = new Map(
-      remoteNotes.map((note: NoteInfo) => [note.id, note])
+      remoteNotes.map((note: NoteInfo) => [note.title, note])
     );
 
     // Upload local notes that are newer than remote
-    for (const [id, localNote] of localNotesMap) {
-      const remoteNote = remoteNotesMap.get(id);
+    for (const [title, localNote] of localNotesMap) {
+      const remoteNote = remoteNotesMap.get(title);
 
       if (!remoteNote || localNote.lastEditTime > remoteNote.lastEditTime) {
         // Local note is newer or doesn't exist remotely - upload it
-        const content = await fileSystemService.readNote(localNote.id);
+        const content = await fileSystemService.readNote(localNote.title);
         try {
-          await fetch(`${API_BASE_URL}/${encodeURIComponent(id)}`, {
+          await fetch(`${API_BASE_URL}/${encodeURIComponent(title)}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content }),
@@ -155,29 +148,22 @@ TaskManager.defineTask(SYNC_TASK_NAME, async () => {
     }
 
     // Download remote notes that are newer than local
-    for (const [id, remoteNote] of remoteNotesMap) {
-      const localNote = localNotesMap.get(id);
+    for (const [title, remoteNote] of remoteNotesMap) {
+      const localNote = localNotesMap.get(title);
 
       if (!localNote || remoteNote.lastEditTime > localNote.lastEditTime) {
         // Remote note is newer or doesn't exist locally - download it
         try {
           const response = await fetch(
-            `${API_BASE_URL}/${encodeURIComponent(id)}`
+            `${API_BASE_URL}/${encodeURIComponent(title)}`
           );
           if (response.ok) {
             const data = await response.json();
-            await fileSystemService.writeNote(
-              id,
-              remoteNote.title,
-              data.content
-            );
+            await fileSystemService.writeNote(title, data.content);
             hasChanges = true;
           }
         } catch (error) {
-          console.warn(
-            `Failed to download note during sync: ${remoteNote.title}`,
-            error
-          );
+          console.warn(`Failed to download note during sync: ${title}`, error);
         }
       }
     }

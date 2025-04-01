@@ -1,5 +1,9 @@
 import * as SecureStore from "expo-secure-store";
-import { CognitoUserPool, CognitoUser, AuthenticationDetails } from "amazon-cognito-identity-js";
+import {
+  CognitoUserPool,
+  CognitoUser,
+  AuthenticationDetails,
+} from "amazon-cognito-identity-js";
 
 const poolData = {
   UserPoolId: "YOUR_USER_POOL_ID", // Your user pool id here

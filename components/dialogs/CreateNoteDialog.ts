@@ -21,9 +21,9 @@ export const showCreateNoteDialog = ({ createNote }: CreateNoteParams) => {
           onPress: (name) => {
             if (name && name.trim()) {
               const noteTitle = name.trim() ?? "New Note";
-              const newNoteId = createNote(noteTitle);
+              const newNoteTitle = createNote(noteTitle);
 
-              console.log("New note created:", newNoteId);
+              console.log("New note created:", newNoteTitle);
 
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             }
@@ -45,7 +45,7 @@ export const showCreateNoteDialog = ({ createNote }: CreateNoteParams) => {
         onPress: () => {
           // For Android, you'd ideally implement a custom modal with TextInput
           const noteTitle = `Note ${new Date().toLocaleDateString()}`;
-          const newNoteId = createNote(noteTitle);
+          const newNoteTitle = createNote(noteTitle);
         },
       },
     ]);
