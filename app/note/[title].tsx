@@ -12,6 +12,7 @@ import {
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { fileSystemService } from "@/services/file-system-service";
 import { TextEditor } from "@/components/TextEditor";
+import { primary } from "@/shared/colors";
 
 // Define these outside of the NotePage component with proper types
 const BackButton = ({ onPress }: { onPress: () => void }) => (
@@ -22,7 +23,7 @@ const BackButton = ({ onPress }: { onPress: () => void }) => (
       marginRight: 15,
     })}
   >
-    <IconSymbol name="chevron.left" size={24} color="#0a7ea4" />
+    <IconSymbol name="chevron.left" size={24} color={primary} />
   </Pressable>
 );
 
@@ -34,7 +35,7 @@ const SaveButton = ({ onPress }: { onPress: () => void }) => (
       marginLeft: 15,
     })}
   >
-    <Text style={{ color: "#0a7ea4", fontWeight: "500", fontSize: 18 }}>
+    <Text style={{ color: primary, fontWeight: "500", fontSize: 18 }}>
       Save
     </Text>
   </Pressable>
@@ -195,12 +196,12 @@ export default function NotePage() {
 
         // Always exit loading state with a fallback
         console.log("No content or invalid content, showing fallback");
-        setEditorContent("Start writing...");
+        setEditorContent("");
         setIsLoading(false);
       } catch (error) {
         console.error("Error loading note content:", error);
         setIsLoading(false);
-        setEditorContent("Start writing...");
+        setEditorContent("");
       }
       // } REMOVE CLOSING BRACE
     };

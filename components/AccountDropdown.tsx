@@ -13,6 +13,9 @@ import { BlurView } from "expo-blur";
 import * as FileSystem from "expo-file-system";
 import { useEffect } from "react";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
+import { useSetAtom } from "jotai";
+import { logoutAtom } from "@/store/userStore";
 
 interface AccountDropdownProps {
   showModal: boolean;
@@ -27,8 +30,15 @@ const AccountDropdown = ({
   fadeAnim,
   scaleAnim,
 }: AccountDropdownProps) => {
-  const handleLogout = () => {
+  const router = useRouter();
+  const logout = useSetAtom(logoutAtom);
+
+  const handleLogout = async () => {
     console.log("Logging out...");
+    const success = await logout();
+    if (success) {
+      router.push("/auth/login");
+    }
     setShowModal(false);
   };
 

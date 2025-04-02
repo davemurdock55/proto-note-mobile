@@ -2,6 +2,8 @@ import { NoteContent, NoteInfo } from "@/shared/models";
 import { atom } from "jotai";
 import { unwrap } from "jotai/utils";
 import { noteService } from "@/services/notes-service";
+import { currentUserAtom } from "@/store/userStore";
+import { syncService } from "@/services/sync-service";
 
 /**
  * Fetches all notes from the API and sorts them by most recently edited
@@ -35,7 +37,6 @@ export const selectedNoteIndexAtom = atom<number | null>(null);
  * Returns null when no note is selected or notes haven't loaded yet
  */
 const selectedNoteAtomAsync = atom(
-  // Read function (same as before)
   async (get) => {
     const notes = get(notesAtom);
     const selectedNoteIndex = get(selectedNoteIndexAtom);
@@ -69,10 +70,7 @@ const selectedNoteAtomAsync = atom(
       return null;
     }
   },
-  // Add a write function that just passes through
-  // This makes it a writable atom
   (get, set, update) => {
-    // update will be a Promise resolved with the note data
     return update;
   }
 );
@@ -102,6 +100,7 @@ export const saveNoteAtom = atom(
     const notes = get(notesAtom);
     const selectedNote = get(selectedNoteAtom);
     const selectedIndex = get(selectedNoteIndexAtom);
+    const currentUser = get(currentUserAtom);
 
     if (!selectedNote || !notes || selectedIndex === null) return;
 
@@ -134,6 +133,12 @@ export const saveNoteAtom = atom(
 
         // Update the notes list with updated timestamps
         set(notesAtom, updatedNotes);
+
+        // If user is logged in, we could trigger a background sync
+        if (currentUser.isLoggedIn) {
+          // This is optional - consider if you want auto-sync after each save
+          // syncService.performSyncTask();
+        }
 
         // Force a full refresh with a small delay to ensure files are written
         set(selectedNoteIndexAtom, null);
@@ -239,3 +244,31 @@ export const deleteNoteAtom = atom(null, async (get, set, title?: string) => {
   // Clear selection
   set(selectedNoteIndexAtom, null);
 });
+
+/**
+ * Atom for manual sync with cloud
+ */
+export const syncNotesAtom = atom(null, async (get, set) => {
+  const notes = get(notesAtom);
+  const currentUser = get(currentUserAtom);
+
+  if (!notes || !currentUser.isLoggedIn) return false;
+
+  try {
+    // Trigger manual sync
+    const success = await syncService.triggerManualSync();
+
+    if (success) {
+      // Refresh the notes list after successful sync
+      const updatedNotes = await loadNotes();
+      set(notesAtom, updatedNotes);
+    }
+
+    return success;
+  } catch (error) {
+    console.error("Sync failed:", error);
+    return false;
+  }
+});
+
+export const editorContentAtom = atom<string>("");

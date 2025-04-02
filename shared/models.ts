@@ -4,3 +4,7 @@ export type NoteInfo = {
 };
 
 export type NoteContent = string;
+
+export type FullNote = NoteInfo & {
+  content: NoteContent;
+};

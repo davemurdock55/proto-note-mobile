@@ -1,208 +1,199 @@
 import * as BackgroundFetch from "expo-background-fetch";
 import * as TaskManager from "expo-task-manager";
 import { fileSystemService } from "./file-system-service";
-import { fetch } from "expo/fetch";
-import { NoteInfo } from "@/shared/models";
+import { NoteInfo, FullNote } from "@/shared/models";
+import { Alert } from "react-native";
+import * as SecureStore from "expo-secure-store";
+import { protoNoteAPI } from "@/shared/constants";
 
-// [ ] - Replace with your actual API URL
-const API_BASE_URL = "https://your-api-endpoint.com/notes";
+// Constants for API and task name
+const NOTES_ENDPOINT = `${protoNoteAPI}/notes`;
 const SYNC_TASK_NAME = "background-notes-sync";
 
-// Extract the task logic into a separate function that can be reused
+// Get current user helper function
+async function getCurrentUser() {
+  try {
+    const userDataString = await SecureStore.getItemAsync("user");
+    if (!userDataString) return null;
+    return JSON.parse(userDataString);
+  } catch (error) {
+    console.error("Error getting current user:", error);
+    return null;
+  }
+}
+
+/**
+ * Performs the sync operation between local and cloud notes
+ */
 async function performSyncTask() {
   try {
     console.log(`Running sync at: ${new Date().toISOString()}`);
 
-    // Get local notes
-    const localNotes = await fileSystemService.getNotes();
+    // Get current user credentials
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      console.log("No user logged in, skipping sync");
+      return BackgroundFetch.BackgroundFetchResult.NoData;
+    }
 
-    // Get remote notes
-    let remoteNotes = [];
+    // Get all local notes
+    const localNotes = await fileSystemService.getNotes();
+    const notesPayload: FullNote[] = [];
+
+    // Prepare all notes data for sync
+    for (const note of localNotes) {
+      const content = await fileSystemService.readNote(note.title);
+      notesPayload.push({
+        title: note.title,
+        content,
+        lastEditTime: note.lastEditTime,
+      });
+    }
+
+    console.log(`Sending ${notesPayload.length} notes to cloud`);
+
+    // Send all notes in one request
     try {
-      const response = await fetch(API_BASE_URL);
-      if (response.ok) {
-        remoteNotes = await response.json();
+      const response = await fetch(`${NOTES_ENDPOINT}/sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${currentUser.token}`,
+        },
+        body: JSON.stringify({
+          username: currentUser.username,
+          notes: notesPayload,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
       }
+
+      const responseData = await response.json();
+
+      // Reconcile the local notes with cloud notes
+      await reconcileWithCloudNotes(responseData.notes, notesPayload);
+
+      return BackgroundFetch.BackgroundFetchResult.NewData;
     } catch (error) {
-      console.warn("Failed to fetch remote notes during sync", error);
+      console.error("Error syncing notes with cloud:", error);
       return BackgroundFetch.BackgroundFetchResult.Failed;
     }
-
-    // Compare and sync (simple strategy: most recent edit wins)
-    let hasChanges = false;
-
-    // Map for efficient lookup
-    const localNotesMap: Map<string, NoteInfo> = new Map(
-      localNotes.map((note: NoteInfo) => [note.title, note])
-    );
-    const remoteNotesMap: Map<string, NoteInfo> = new Map(
-      remoteNotes.map((note: NoteInfo) => [note.title, note])
-    );
-
-    // Upload local notes that are newer than remote
-    for (const [title, localNote] of localNotesMap) {
-      const remoteNote = remoteNotesMap.get(title);
-
-      if (!remoteNote || localNote.lastEditTime > remoteNote.lastEditTime) {
-        // Local note is newer or doesn't exist remotely - upload it
-        const content = await fileSystemService.readNote(localNote.title);
-        try {
-          await fetch(`${API_BASE_URL}/${encodeURIComponent(title)}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content }),
-          });
-          hasChanges = true;
-        } catch (error) {
-          console.warn(
-            `Failed to upload note during sync: ${localNote.title}`,
-            error
-          );
-        }
-      }
-    }
-
-    // Download remote notes that are newer than local
-    for (const [title, remoteNote] of remoteNotesMap) {
-      const localNote = localNotesMap.get(title);
-
-      if (!localNote || remoteNote.lastEditTime > localNote.lastEditTime) {
-        // Remote note is newer or doesn't exist locally - download it
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/${encodeURIComponent(title)}`
-          );
-          if (response.ok) {
-            const data = await response.json();
-            await fileSystemService.writeNote(title, data.content);
-            hasChanges = true;
-          }
-        } catch (error) {
-          console.warn(`Failed to download note during sync: ${title}`, error);
-        }
-      }
-    }
-
-    return hasChanges
-      ? BackgroundFetch.BackgroundFetchResult.NewData
-      : BackgroundFetch.BackgroundFetchResult.NoData;
   } catch (error) {
-    console.error("Error during sync:", error);
+    console.error("Error during sync task:", error);
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }
+}
+
+/**
+ * Reconciles local notes with cloud notes
+ * @param cloudNotes - Notes received from the cloud API
+ * @param localNotes - Local notes that were sent to the API
+ */
+async function reconcileWithCloudNotes(
+  cloudNotes: FullNote[],
+  localNotes: FullNote[]
+) {
+  console.log("Beginning reconciliation with cloud notes...");
+
+  // Create maps for easier lookup
+  const localNotesMap = new Map<string, FullNote>();
+  localNotes.forEach((note) => localNotesMap.set(note.title, note));
+
+  const cloudNotesMap = new Map<string, FullNote>();
+  cloudNotes.forEach((note) => cloudNotesMap.set(note.title, note));
+
+  // 1. Update/create notes from cloud
+  for (const cloudNote of cloudNotes) {
+    const localNote = localNotesMap.get(cloudNote.title);
+
+    if (!localNote || cloudNote.lastEditTime > localNote.lastEditTime) {
+      console.log(`Updating/creating note from cloud: ${cloudNote.title}`);
+      await fileSystemService.writeNote(cloudNote.title, cloudNote.content);
+    }
+  }
+
+  // 2. Delete local notes not in cloud
+  for (const [title, _] of localNotesMap.entries()) {
+    if (!cloudNotesMap.has(title)) {
+      console.log(`Deleting local note not found in cloud: ${title}`);
+      await fileSystemService.deleteNote(title);
+    }
+  }
+
+  console.log("Reconciliation complete");
 }
 
 // Define the background task
-TaskManager.defineTask(SYNC_TASK_NAME, async () => {
-  try {
-    console.log(`Running background sync at: ${new Date().toISOString()}`);
+TaskManager.defineTask(SYNC_TASK_NAME, performSyncTask);
 
-    // Get local notes
-    const localNotes = await fileSystemService.getNotes();
-
-    // Get remote notes
-    let remoteNotes = [];
-    try {
-      const response = await fetch(API_BASE_URL);
-      if (response.ok) {
-        remoteNotes = await response.json();
-      }
-    } catch (error) {
-      console.warn("Failed to fetch remote notes during sync", error);
-      // If we can't get remote notes, we can't sync properly
-      return BackgroundFetch.BackgroundFetchResult.Failed;
-    }
-
-    // Compare and sync (simple strategy: most recent edit wins)
-    let hasChanges = false;
-
-    // Map for efficient lookup
-    const localNotesMap: Map<string, NoteInfo> = new Map(
-      localNotes.map((note: NoteInfo) => [note.title, note])
-    );
-    const remoteNotesMap: Map<string, NoteInfo> = new Map(
-      remoteNotes.map((note: NoteInfo) => [note.title, note])
-    );
-
-    // Upload local notes that are newer than remote
-    for (const [title, localNote] of localNotesMap) {
-      const remoteNote = remoteNotesMap.get(title);
-
-      if (!remoteNote || localNote.lastEditTime > remoteNote.lastEditTime) {
-        // Local note is newer or doesn't exist remotely - upload it
-        const content = await fileSystemService.readNote(localNote.title);
-        try {
-          await fetch(`${API_BASE_URL}/${encodeURIComponent(title)}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content }),
-          });
-          hasChanges = true;
-        } catch (error) {
-          console.warn(
-            `Failed to upload note during sync: ${localNote.title}`,
-            error
-          );
-        }
-      }
-    }
-
-    // Download remote notes that are newer than local
-    for (const [title, remoteNote] of remoteNotesMap) {
-      const localNote = localNotesMap.get(title);
-
-      if (!localNote || remoteNote.lastEditTime > localNote.lastEditTime) {
-        // Remote note is newer or doesn't exist locally - download it
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/${encodeURIComponent(title)}`
-          );
-          if (response.ok) {
-            const data = await response.json();
-            await fileSystemService.writeNote(title, data.content);
-            hasChanges = true;
-          }
-        } catch (error) {
-          console.warn(`Failed to download note during sync: ${title}`, error);
-        }
-      }
-    }
-
-    return hasChanges
-      ? BackgroundFetch.BackgroundFetchResult.NewData
-      : BackgroundFetch.BackgroundFetchResult.NoData;
-  } catch (error) {
-    console.error("Error during background sync:", error);
-    return BackgroundFetch.BackgroundFetchResult.Failed;
-  }
-});
-
+/**
+ * Registers the background sync task
+ */
 async function registerSyncTask() {
-  await BackgroundFetch.registerTaskAsync(SYNC_TASK_NAME, {
-    minimumInterval: 15 * 60, // 15 minutes
-    stopOnTerminate: false,
-    startOnBoot: true,
-  });
-  console.log("Background sync task registered");
+  try {
+    await BackgroundFetch.registerTaskAsync(SYNC_TASK_NAME, {
+      minimumInterval: 15 * 60, // 15 minutes
+      stopOnTerminate: false,
+      startOnBoot: true,
+    });
+    console.log("Background sync task registered");
+    return true;
+  } catch (error) {
+    console.error("Failed to register background sync task:", error);
+    return false;
+  }
 }
 
+/**
+ * Unregisters the background sync task
+ */
 async function unregisterSyncTask() {
-  await BackgroundFetch.unregisterTaskAsync(SYNC_TASK_NAME);
-  console.log("Background sync task unregistered");
+  try {
+    await BackgroundFetch.unregisterTaskAsync(SYNC_TASK_NAME);
+    console.log("Background sync task unregistered");
+    return true;
+  } catch (error) {
+    console.error("Failed to unregister background sync task:", error);
+    return false;
+  }
 }
 
+/**
+ * Checks if the sync task is registered
+ */
 async function isSyncTaskRegistered() {
   return await TaskManager.isTaskRegisteredAsync(SYNC_TASK_NAME);
 }
 
+/**
+ * Triggers a manual sync and shows the result
+ */
 async function triggerManualSync() {
-  // Check if task is registered before attempting to execute
-  const isRegistered = await TaskManager.isTaskRegisteredAsync(SYNC_TASK_NAME);
-  if (isRegistered) {
-    // Use the same function that the background task uses
-    return await performSyncTask();
-  } else {
-    console.warn(`Task ${SYNC_TASK_NAME} not registered`);
+  try {
+    const result = await performSyncTask();
+
+    if (result === BackgroundFetch.BackgroundFetchResult.NewData) {
+      Alert.alert(
+        "Sync Successful",
+        "Your notes have been synced with the cloud."
+      );
+      return true;
+    } else if (result === BackgroundFetch.BackgroundFetchResult.NoData) {
+      Alert.alert("Sync Complete", "No changes were needed.");
+      return true;
+    } else {
+      Alert.alert(
+        "Sync Failed",
+        "There was a problem syncing your notes. Please try again later."
+      );
+      return false;
+    }
+  } catch (error) {
+    console.error("Error during manual sync:", error);
+    Alert.alert("Sync Error", "An unexpected error occurred during sync.");
+    return false;
   }
 }
 
@@ -211,4 +202,5 @@ export const syncService = {
   unregisterSyncTask,
   isSyncTaskRegistered,
   triggerManualSync,
+  performSyncTask,
 };

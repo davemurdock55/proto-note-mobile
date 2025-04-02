@@ -1,16 +1,19 @@
 import { Stack, useRouter, usePathname } from "expo-router";
-import { Pressable, StyleSheet, Platform, Animated, Alert } from "react-native";
+import { Pressable, StyleSheet, Platform, Animated, View } from "react-native";
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from "react-native-reanimated";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useState, useRef, useEffect } from "react";
 import * as Haptics from "expo-haptics";
 import AccountDropdown from "@/components/AccountDropdown";
 import { showCreateNoteDialog } from "@/components/dialogs/CreateNoteDialog";
 import { createEmptyNoteAtom } from "@/store/notesStore";
+import { currentUserAtom } from "@/store/userStore";
+import { primary } from "@/shared/colors";
+import { syncService } from "@/services/sync-service";
 
 // Configure Reanimated logger before the component
 configureReanimatedLogger({
@@ -18,17 +21,34 @@ configureReanimatedLogger({
   strict: false, // To disable the strict mode warnings for animations
 });
 
-// NOTE: Start app with `npx expo start --clear`
-
 export default function RootLayout() {
   const router = useRouter();
   const pathname = usePathname();
+  const currentUser = useAtomValue(currentUserAtom);
   const createEmptyNote = useSetAtom(createEmptyNoteAtom);
+
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  // Check if the current route is an auth route
+  const isAuthRoute = pathname?.startsWith("/auth");
+
+  // Redirect to login if not logged in and not already on an auth route
+  useEffect(() => {
+    if (!currentUser.isLoggedIn && !isAuthRoute) {
+      router.replace("/auth/login");
+    }
+  }, [currentUser.isLoggedIn, isAuthRoute, router]);
+
+  const handleSyncPress = async () => {
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    await syncService.triggerManualSync();
+  };
 
   // Close modal when navigating
   useEffect(() => {
@@ -70,6 +90,7 @@ export default function RootLayout() {
 
       <Stack
         screenOptions={{
+          headerShown: !isAuthRoute, // Hide header on auth routes
           title: "Your Notes",
           headerLeft: () => (
             <Pressable
@@ -79,19 +100,34 @@ export default function RootLayout() {
                 marginRight: 15,
               })}
             >
-              <IconSymbol name="plus" size={24} color="#0a7ea4" />
+              <IconSymbol name="plus" size={24} color={primary} />
             </Pressable>
           ),
           headerRight: () => (
-            <Pressable
-              onPress={handleAccountPress}
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.6 : 1,
-                marginLeft: 15,
-              })}
-            >
-              <IconSymbol name="person.circle" size={24} color="#0a7ea4" />
-            </Pressable>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Pressable
+                onPress={handleSyncPress}
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.6 : 1,
+                  marginRight: 15,
+                })}
+              >
+                {/* Using available icon as placeholder - we'd need to add refresh/sync to mapping */}
+                <IconSymbol
+                  name="arrow.trianglehead.2.clockwise.rotate.90.icloud"
+                  size={30}
+                  color={primary}
+                />
+              </Pressable>
+              <Pressable
+                onPress={handleAccountPress}
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <IconSymbol name="person.circle" size={26} color={primary} />
+              </Pressable>
+            </View>
           ),
         }}
       />

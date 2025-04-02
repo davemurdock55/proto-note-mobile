@@ -3,9 +3,6 @@ import { NoteContent, NoteInfo } from "@/shared/models";
 import { fetch } from "expo/fetch";
 import { fileSystemService } from "./file-system-service";
 
-// [ ] - Replace with your actual API URL
-const API_BASE_URL = "https://your-api-endpoint.com/notes";
-
 async function getNotes(): Promise<NoteInfo[]> {
   try {
     // First try to get notes from file system

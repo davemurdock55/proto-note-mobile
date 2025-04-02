@@ -109,7 +109,7 @@ async function createNoteAsFile(title: string): Promise<boolean> {
   const contentPath = `${NOTES_DIRECTORY}${sanitizedTitle}.txt`;
 
   try {
-    await FileSystem.writeAsStringAsync(contentPath, "Start writing...");
+    await FileSystem.writeAsStringAsync(contentPath, "");
 
     // Create metadata file
     const metadata: NoteInfo = {

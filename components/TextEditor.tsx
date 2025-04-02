@@ -23,6 +23,7 @@ export const TextEditor: React.FC<TextEditorProps> = ({
         style={styles.textInput}
         multiline
         value={text}
+        placeholder="Start writing..."
         onChangeText={(newText) => {
           setText(newText);
           onChange(newText);
@@ -40,7 +41,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 10,
     textAlignVertical: "top",
-    fontSize: 16,
+    fontSize: 18,
     backgroundColor: "white",
   },
 });
