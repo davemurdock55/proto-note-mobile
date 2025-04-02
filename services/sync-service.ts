@@ -5,10 +5,14 @@ import { NoteInfo, FullNote } from "@/shared/models";
 import { Alert } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { protoNoteAPI } from "@/shared/constants";
+import * as Device from "expo-device";
+import * as Application from "expo-application";
 
 // Constants for API and task name
 const NOTES_ENDPOINT = `${protoNoteAPI}/notes`;
 const SYNC_TASK_NAME = "background-notes-sync";
+const DEVICE_ID_KEY = "device_id";
+const LAST_SYNCED_TIME_KEY = "last_synced_time";
 
 // Get current user helper function
 async function getCurrentUser() {
@@ -19,6 +23,68 @@ async function getCurrentUser() {
   } catch (error) {
     console.error("Error getting current user:", error);
     return null;
+  }
+}
+
+/**
+ * Gets or creates a device ID for sync identification
+ */
+async function getDeviceId(): Promise<string> {
+  try {
+    // First try to get stored ID
+    let deviceId = await SecureStore.getItemAsync(DEVICE_ID_KEY);
+
+    if (!deviceId) {
+      // Create a new device ID based on device info
+      const deviceName = Device.deviceName || "";
+      const installationId = await Application.getInstallationTimeAsync();
+      const deviceBrand = Device.brand || "";
+      const deviceModel = Device.modelName || "";
+
+      // Create a composite ID
+      deviceId = `${deviceBrand}-${deviceModel}-${installationId}`.substring(
+        0,
+        32
+      );
+
+      // Store it for future use
+      await SecureStore.setItemAsync(DEVICE_ID_KEY, deviceId);
+      console.log(`Generated new device ID: ${deviceId}`);
+    }
+
+    return deviceId;
+  } catch (error) {
+    console.error("Error getting device ID:", error);
+    // Fallback to a random ID if there's an error
+    const fallbackId = Math.random().toString(36).substring(2, 15);
+    return `fallback-${fallbackId}`;
+  }
+}
+
+/**
+ * Gets the last synced time for this device
+ */
+async function getLastSyncedTime(): Promise<number> {
+  try {
+    const timeString = await SecureStore.getItemAsync(LAST_SYNCED_TIME_KEY);
+    return timeString ? parseInt(timeString, 10) : 0;
+  } catch (error) {
+    console.error("Error getting last synced time:", error);
+    return 0;
+  }
+}
+
+/**
+ * Updates the last synced time for this device
+ */
+async function updateLastSyncedTime(timestamp: number): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(LAST_SYNCED_TIME_KEY, timestamp.toString());
+    console.log(
+      `Updated last synced time to: ${new Date(timestamp).toISOString()}`
+    );
+  } catch (error) {
+    console.error("Error updating last synced time:", error);
   }
 }
 
@@ -35,6 +101,16 @@ async function performSyncTask() {
       console.log("No user logged in, skipping sync");
       return BackgroundFetch.BackgroundFetchResult.NoData;
     }
+
+    // Get device ID for this device
+    const deviceId = await getDeviceId();
+    const lastSyncedTime = await getLastSyncedTime();
+
+    console.log(
+      `Device ID: ${deviceId}, Last synced: ${new Date(
+        lastSyncedTime
+      ).toISOString()}`
+    );
 
     // Get all local notes
     const localNotes = await fileSystemService.getNotes();
@@ -62,6 +138,7 @@ async function performSyncTask() {
         },
         body: JSON.stringify({
           username: currentUser.username,
+          deviceId, // Include the device ID in the request
           notes: notesPayload,
         }),
       });
@@ -71,6 +148,11 @@ async function performSyncTask() {
       }
 
       const responseData = await response.json();
+
+      // Update the last synced time from the response
+      if (responseData.lastSyncedTime) {
+        await updateLastSyncedTime(responseData.lastSyncedTime);
+      }
 
       // Reconcile the local notes with cloud notes
       await reconcileWithCloudNotes(responseData.notes, notesPayload);
@@ -96,6 +178,7 @@ async function reconcileWithCloudNotes(
   localNotes: FullNote[]
 ) {
   console.log("Beginning reconciliation with cloud notes...");
+  console.log(`Received ${cloudNotes.length} notes from server`);
 
   // Create maps for easier lookup
   const localNotesMap = new Map<string, FullNote>();
@@ -104,14 +187,14 @@ async function reconcileWithCloudNotes(
   const cloudNotesMap = new Map<string, FullNote>();
   cloudNotes.forEach((note) => cloudNotesMap.set(note.title, note));
 
-  // 1. Update/create notes from cloud
+  // 1. Update/create notes from cloud - the server has already done the merge logic
   for (const cloudNote of cloudNotes) {
-    const localNote = localNotesMap.get(cloudNote.title);
-
-    if (!localNote || cloudNote.lastEditTime > localNote.lastEditTime) {
-      console.log(`Updating/creating note from cloud: ${cloudNote.title}`);
-      await fileSystemService.writeNote(cloudNote.title, cloudNote.content);
-    }
+    console.log(`Updating/creating note from cloud: ${cloudNote.title}`);
+    await fileSystemService.writeNote(
+      cloudNote.title,
+      cloudNote.content,
+      cloudNote.lastEditTime // Pass the original timestamp
+    );
   }
 
   // 2. Delete local notes not in cloud

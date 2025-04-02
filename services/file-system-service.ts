@@ -60,7 +60,8 @@ async function readNoteFromFiles(title: string): Promise<NoteContent> {
 
 async function writeNoteFromFiles(
   title: string,
-  content: NoteContent
+  content: NoteContent,
+  timestamp?: number
 ): Promise<boolean> {
   try {
     await initializeDirectory();
@@ -87,10 +88,10 @@ async function writeNoteFromFiles(
       throw new Error(`Failed to write content file at ${contentPath}`);
     }
 
-    // Write metadata with current timestamp
+    // Use provided timestamp or current time if not provided
     const metadata: NoteInfo = {
       title,
-      lastEditTime: Date.now(),
+      lastEditTime: timestamp || Date.now(),
     };
 
     await FileSystem.writeAsStringAsync(metaPath, JSON.stringify(metadata));
