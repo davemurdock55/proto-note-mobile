@@ -39,7 +39,8 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    padding: 10,
+    paddingVertical: 25,
+    paddingHorizontal: 20,
     textAlignVertical: "top",
     fontSize: 18,
     backgroundColor: "white",
