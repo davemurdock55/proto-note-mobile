@@ -181,6 +181,7 @@ export const createEmptyNoteAtom = atom(
     const newNote: NoteInfo = {
       title: userTitle, // Use the actual title user specified
       lastEditTime: Date.now(),
+      createdAtTime: Date.now(),
     };
 
     // Add new note to the beginning of the list and select it

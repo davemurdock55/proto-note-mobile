@@ -92,6 +92,7 @@ async function writeNoteFromFiles(
     const metadata: NoteInfo = {
       title,
       lastEditTime: timestamp || Date.now(),
+      createdAtTime: fileInfo.modificationTime || Date.now(),
     };
 
     await FileSystem.writeAsStringAsync(metaPath, JSON.stringify(metadata));
@@ -116,6 +117,7 @@ async function createNoteAsFile(title: string): Promise<boolean> {
     const metadata: NoteInfo = {
       title: title,
       lastEditTime: Date.now(),
+      createdAtTime: Date.now(),
     };
 
     await FileSystem.writeAsStringAsync(metaPath, JSON.stringify(metadata));

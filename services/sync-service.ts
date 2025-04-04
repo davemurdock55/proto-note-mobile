@@ -123,6 +123,7 @@ async function performSyncTask() {
         title: note.title,
         content,
         lastEditTime: note.lastEditTime,
+        createdAtTime: note.createdAtTime,
       });
     }
 
