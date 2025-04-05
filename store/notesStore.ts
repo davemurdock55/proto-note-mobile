@@ -177,11 +177,12 @@ export const createEmptyNoteAtom = atom(
 
     if (!success) return;
 
+    const now = Date.now();
     // Create new note object with the exact same title
     const newNote: NoteInfo = {
       title: userTitle, // Use the actual title user specified
-      lastEditTime: Date.now(),
-      createdAtTime: Date.now(),
+      lastEditTime: now,
+      createdAtTime: now,
     };
 
     // Add new note to the beginning of the list and select it
@@ -256,14 +257,14 @@ export const syncNotesAtom = atom(null, async (get, set) => {
   if (!notes || !currentUser.isLoggedIn) return false;
 
   try {
-    // Trigger manual sync
-    const success = await syncService.triggerManualSync();
-
-    if (success) {
-      // Refresh the notes list after successful sync
-      const updatedNotes = await loadNotes();
-      set(notesAtom, updatedNotes);
-    }
+    // Trigger manual sync with a callback to refresh notes
+    const success = await syncService.triggerManualSync(async (syncSuccess) => {
+      if (syncSuccess) {
+        // Refresh the notes list after successful sync
+        const updatedNotes = await loadNotes();
+        set(notesAtom, updatedNotes);
+      }
+    });
 
     return success;
   } catch (error) {

@@ -61,7 +61,8 @@ async function readNoteFromFiles(title: string): Promise<NoteContent> {
 async function writeNoteFromFiles(
   title: string,
   content: NoteContent,
-  timestamp?: number
+  lastEditTime: number,
+  createdAtTime?: number
 ): Promise<boolean> {
   try {
     await initializeDirectory();
@@ -69,11 +70,20 @@ async function writeNoteFromFiles(
     const metaPath = `${NOTES_DIRECTORY}${sanitizedTitle}.meta.json`;
     const contentPath = `${NOTES_DIRECTORY}${sanitizedTitle}.txt`;
 
-    console.log(
-      `Writing note with title "${title}" (sanitized: "${sanitizedTitle}")`
-    );
-    console.log(`Content path: ${contentPath}`);
-    console.log(`Metadata path: ${metaPath}`);
+    // Check if the note already exists to preserve createdAtTime
+    let existingCreatedTime: number | undefined;
+
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(metaPath);
+      if (fileInfo.exists) {
+        const existingMetadata = JSON.parse(
+          await FileSystem.readAsStringAsync(metaPath)
+        ) as NoteInfo;
+        existingCreatedTime = existingMetadata.createdAtTime;
+      }
+    } catch (error) {
+      console.log("No existing metadata found, will create new");
+    }
 
     // Ensure content is a string
     const contentString =
@@ -83,16 +93,16 @@ async function writeNoteFromFiles(
     await FileSystem.writeAsStringAsync(contentPath, contentString);
 
     // Verify write
-    const fileInfo = await FileSystem.getInfoAsync(contentPath);
-    if (!fileInfo.exists) {
-      throw new Error(`Failed to write content file at ${contentPath}`);
-    }
+    // const fileInfo = await FileSystem.getInfoAsync(contentPath);
+    // if (!fileInfo.exists) {
+    //   throw new Error(`Failed to write content file at ${contentPath}`);
+    // }
 
     // Use provided timestamp or current time if not provided
     const metadata: NoteInfo = {
       title,
-      lastEditTime: timestamp || Date.now(),
-      createdAtTime: fileInfo.modificationTime || Date.now(),
+      lastEditTime: lastEditTime || Date.now(),
+      createdAtTime: createdAtTime || existingCreatedTime || Date.now(),
     };
 
     await FileSystem.writeAsStringAsync(metaPath, JSON.stringify(metadata));

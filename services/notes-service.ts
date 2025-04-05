@@ -15,7 +15,12 @@ async function getNotes(): Promise<NoteInfo[]> {
     console.log("No notes found, creating mock data");
     await Promise.all(
       notesMock.map((note) =>
-        fileSystemService.writeNote(note.title, `This is note: ${note.title}`)
+        fileSystemService.writeNote(
+          note.title,
+          `This is note: ${note.title}`,
+          note.lastEditTime,
+          note.createdAtTime
+        )
       )
     );
     return notesMock;
@@ -27,7 +32,12 @@ async function getNotes(): Promise<NoteInfo[]> {
     // Save mock data to file system for future use
     await Promise.all(
       notesMock.map((note) =>
-        fileSystemService.writeNote(note.title, `This is note: ${note.title}`)
+        fileSystemService.writeNote(
+          note.title,
+          `This is note: ${note.title}`,
+          note.lastEditTime,
+          note.createdAtTime
+        )
       )
     );
     return notesMock;
@@ -55,7 +65,11 @@ async function writeNote(
 ): Promise<boolean> {
   try {
     // First save to file system
-    const localSuccess = await fileSystemService.writeNote(title, content);
+    const localSuccess = await fileSystemService.writeNote(
+      title,
+      content,
+      Date.now()
+    );
     if (!localSuccess) throw new Error("Failed to save note to file system");
 
     return true;

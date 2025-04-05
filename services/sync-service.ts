@@ -188,20 +188,33 @@ async function reconcileWithCloudNotes(
   const cloudNotesMap = new Map<string, FullNote>();
   cloudNotes.forEach((note) => cloudNotesMap.set(note.title, note));
 
-  // 1. Update/create notes from cloud - the server has already done the merge logic
+  // Process each cloud note
   for (const cloudNote of cloudNotes) {
-    console.log(`Updating/creating note from cloud: ${cloudNote.title}`);
+    const localNote = localNotesMap.get(cloudNote.title);
+
+    // Always preserve the earliest createdAtTime between local and cloud
+    const createdAtTime =
+      localNote && localNote.createdAtTime && cloudNote.createdAtTime
+        ? Math.min(localNote.createdAtTime, cloudNote.createdAtTime)
+        : cloudNote.createdAtTime || localNote?.createdAtTime || Date.now();
+
+    // For lastEditTime, take the more recent one
+    const lastEditTime =
+      localNote && localNote.lastEditTime && cloudNote.lastEditTime
+        ? Math.max(localNote.lastEditTime, cloudNote.lastEditTime)
+        : cloudNote.lastEditTime || localNote?.lastEditTime || Date.now();
+
     await fileSystemService.writeNote(
       cloudNote.title,
       cloudNote.content,
-      cloudNote.lastEditTime // Pass the original timestamp
+      lastEditTime,
+      createdAtTime
     );
   }
 
-  // 2. Delete local notes not in cloud
+  // Delete local notes not in cloud
   for (const [title, _] of localNotesMap.entries()) {
     if (!cloudNotesMap.has(title)) {
-      console.log(`Deleting local note not found in cloud: ${title}`);
       await fileSystemService.deleteNote(title);
     }
   }
@@ -251,32 +264,48 @@ async function isSyncTaskRegistered() {
   return await TaskManager.isTaskRegisteredAsync(SYNC_TASK_NAME);
 }
 
+// In services/sync-service.ts, modify the triggerManualSync function:
+
 /**
  * Triggers a manual sync and shows the result
+ * @param onSyncComplete Optional callback for when sync is complete
  */
-async function triggerManualSync() {
+async function triggerManualSync(onSyncComplete?: (success: boolean) => void) {
   try {
     const result = await performSyncTask();
+    const success =
+      result === BackgroundFetch.BackgroundFetchResult.NewData ||
+      result === BackgroundFetch.BackgroundFetchResult.NoData;
 
     if (result === BackgroundFetch.BackgroundFetchResult.NewData) {
       Alert.alert(
         "Sync Successful",
         "Your notes have been synced with the cloud."
       );
-      return true;
     } else if (result === BackgroundFetch.BackgroundFetchResult.NoData) {
       Alert.alert("Sync Complete", "No changes were needed.");
-      return true;
     } else {
       Alert.alert(
         "Sync Failed",
         "There was a problem syncing your notes. Please try again later."
       );
-      return false;
     }
+
+    // Call the callback with the success status
+    if (onSyncComplete) {
+      onSyncComplete(success);
+    }
+
+    return success;
   } catch (error) {
     console.error("Error during manual sync:", error);
     Alert.alert("Sync Error", "An unexpected error occurred during sync.");
+
+    // Call the callback with failure
+    if (onSyncComplete) {
+      onSyncComplete(false);
+    }
+
     return false;
   }
 }
