@@ -93,30 +93,15 @@ async function updateLastSyncedTime(timestamp: number): Promise<void> {
  */
 async function performSyncTask() {
   try {
-    console.log(`Running sync at: ${new Date().toISOString()}`);
-
-    // Get current user credentials
     const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      console.log("No user logged in, skipping sync");
-      return BackgroundFetch.BackgroundFetchResult.NoData;
-    }
+    if (!currentUser) return BackgroundFetch.BackgroundFetchResult.NoData;
 
-    // Get device ID for this device
     const deviceId = await getDeviceId();
     const lastSyncedTime = await getLastSyncedTime();
 
-    console.log(
-      `Device ID: ${deviceId}, Last synced: ${new Date(
-        lastSyncedTime
-      ).toISOString()}`
-    );
-
-    // Get all local notes
     const localNotes = await fileSystemService.getNotes();
     const notesPayload: FullNote[] = [];
 
-    // Prepare all notes data for sync
     for (const note of localNotes) {
       const content = await fileSystemService.readNote(note.title);
       notesPayload.push({
@@ -127,44 +112,31 @@ async function performSyncTask() {
       });
     }
 
-    console.log(`Sending ${notesPayload.length} notes to cloud`);
+    const response = await fetch(`${NOTES_ENDPOINT}/sync`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${currentUser.token}`,
+      },
+      body: JSON.stringify({
+        username: currentUser.username,
+        deviceId,
+        notes: notesPayload,
+      }),
+    });
 
-    // Send all notes in one request
-    try {
-      const response = await fetch(`${NOTES_ENDPOINT}/sync`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${currentUser.token}`,
-        },
-        body: JSON.stringify({
-          username: currentUser.username,
-          deviceId, // Include the device ID in the request
-          notes: notesPayload,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}`);
-      }
-
-      const responseData = await response.json();
-
-      // Update the last synced time from the response
-      if (responseData.lastSyncedTime) {
-        await updateLastSyncedTime(responseData.lastSyncedTime);
-      }
-
-      // Reconcile the local notes with cloud notes
-      await reconcileWithCloudNotes(responseData.notes, notesPayload);
-
-      return BackgroundFetch.BackgroundFetchResult.NewData;
-    } catch (error) {
-      console.error("Error syncing notes with cloud:", error);
-      return BackgroundFetch.BackgroundFetchResult.Failed;
+    if (!response.ok) {
+      throw new Error(`Server responded with ${response.status}`);
     }
+
+    const responseData = await response.json();
+
+    await updateLastSyncedTime(responseData.lastSyncedTime);
+    await reconcileWithCloudNotes(responseData.notes, notesPayload);
+
+    return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch (error) {
-    console.error("Error during sync task:", error);
+    console.error("Error syncing notes:", error);
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }
 }
@@ -266,12 +238,15 @@ async function isSyncTaskRegistered() {
 
 // In services/sync-service.ts, modify the triggerManualSync function:
 
+// In services/sync-service.ts, modify the triggerManualSync function:
+
 /**
  * Triggers a manual sync and shows the result
  * @param onSyncComplete Optional callback for when sync is complete
  */
 async function triggerManualSync(onSyncComplete?: (success: boolean) => void) {
   try {
+    console.log(`Triggering manual sync at: ${new Date().toISOString()}`);
     const result = await performSyncTask();
     const success =
       result === BackgroundFetch.BackgroundFetchResult.NewData ||

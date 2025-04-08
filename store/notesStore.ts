@@ -257,12 +257,15 @@ export const syncNotesAtom = atom(null, async (get, set) => {
   if (!notes || !currentUser.isLoggedIn) return false;
 
   try {
+    console.log("Starting manual sync process...");
     // Trigger manual sync with a callback to refresh notes
     const success = await syncService.triggerManualSync(async (syncSuccess) => {
       if (syncSuccess) {
+        console.log("Sync successful, refreshing notes list...");
         // Refresh the notes list after successful sync
         const updatedNotes = await loadNotes();
         set(notesAtom, updatedNotes);
+        console.log(`Notes list refreshed with ${updatedNotes.length} notes`);
       }
     });
 

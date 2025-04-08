@@ -2,6 +2,7 @@ import { notesMock } from "@/store/mocks/notesMock";
 import { NoteContent, NoteInfo } from "@/shared/models";
 import { fetch } from "expo/fetch";
 import { fileSystemService } from "./file-system-service";
+import { syncService } from "./sync-service";
 
 async function getNotes(): Promise<NoteInfo[]> {
   try {
@@ -17,12 +18,13 @@ async function getNotes(): Promise<NoteInfo[]> {
       notesMock.map((note) =>
         fileSystemService.writeNote(
           note.title,
-          `This is note: ${note.title}`,
+          note.content,
           note.lastEditTime,
           note.createdAtTime
         )
       )
     );
+    syncService.performSyncTask();
     return notesMock;
   } catch (error) {
     console.warn(
@@ -34,12 +36,13 @@ async function getNotes(): Promise<NoteInfo[]> {
       notesMock.map((note) =>
         fileSystemService.writeNote(
           note.title,
-          `This is note: ${note.title}`,
+          note.content,
           note.lastEditTime,
           note.createdAtTime
         )
       )
     );
+    syncService.performSyncTask();
     return notesMock;
   }
 }
