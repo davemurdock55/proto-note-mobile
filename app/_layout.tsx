@@ -36,10 +36,10 @@ export default function RootLayout() {
   // Check if the current route is an auth route
   const isAuthRoute = pathname?.startsWith("/auth");
 
-  // Redirect to login if not logged in and not already on an auth route
+  // Redirect to log-in if not logged in and not already on an auth route
   useEffect(() => {
     if (!currentUser.isLoggedIn && !isAuthRoute) {
-      router.replace("/auth/login");
+      router.replace("/auth/log-in");
     }
   }, [currentUser.isLoggedIn, isAuthRoute, router]);
 

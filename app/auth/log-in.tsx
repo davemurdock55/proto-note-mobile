@@ -16,6 +16,7 @@ import {
 import { useRouter } from "expo-router";
 import { primary } from "@/shared/colors";
 import { loginAtom } from "@/store/userStore";
+import { IconSymbol } from "@/components/ui/IconSymbol";
 
 interface LoginFormProps {
   onSuccess: () => void;
@@ -26,6 +27,7 @@ export default function LoginPage({ onSuccess }: LoginFormProps) {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const login = useSetAtom(loginAtom);
@@ -85,13 +87,25 @@ export default function LoginPage({ onSuccess }: LoginFormProps) {
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                placeholder="Enter your password"
-              />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  placeholder="Enter your password"
+                />
+                <TouchableOpacity
+                  style={styles.eyeIcon}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <IconSymbol
+                    name={showPassword ? "eye.slash" : "eye"}
+                    size={24}
+                    color="#777"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity
@@ -177,6 +191,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 8,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: "transparent",
+  },
+  eyeIcon: {
+    padding: 10,
   },
   button: {
     backgroundColor: primary, // Cyan color to match your desktop app

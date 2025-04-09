@@ -16,6 +16,7 @@ import {
 import { useRouter } from "expo-router";
 import { primary } from "@/shared/colors";
 import { signupAtom } from "@/store/userStore";
+import { IconSymbol } from "@/components/ui/IconSymbol";
 
 interface SignUpFormProps {
   onSuccess: () => void;
@@ -31,6 +32,8 @@ export default function SignUpPage({
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const signup = useSetAtom(signupAtom);
@@ -108,24 +111,48 @@ export default function SignUpPage({
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                placeholder="Create a password"
-              />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  placeholder="Create a password"
+                />
+                <TouchableOpacity
+                  style={styles.eyeIcon}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <IconSymbol
+                    name={showPassword ? "eye.slash" : "eye"}
+                    size={24}
+                    color="#777"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Confirm Password</Text>
-              <TextInput
-                style={styles.input}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                placeholder="Confirm your password"
-              />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                  placeholder="Confirm your password"
+                />
+                <TouchableOpacity
+                  style={styles.eyeIcon}
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  <IconSymbol
+                    name={showConfirmPassword ? "eye.slash" : "eye"}
+                    size={24}
+                    color="#777"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity
@@ -142,7 +169,7 @@ export default function SignUpPage({
 
             <View style={styles.switchContainer}>
               <Text style={styles.switchText}>Already have an account? </Text>
-              <TouchableOpacity onPress={() => router.push("/auth/login")}>
+              <TouchableOpacity onPress={() => router.push("/auth/log-in")}>
                 <Text style={styles.switchLink}>Log in</Text>
               </TouchableOpacity>
             </View>
@@ -211,6 +238,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 8,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: "transparent",
+  },
+  eyeIcon: {
+    padding: 10,
   },
   button: {
     backgroundColor: primary, // Cyan color to match your desktop app

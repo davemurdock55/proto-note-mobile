@@ -37,7 +37,7 @@ const AccountDropdown = ({
     console.log("Logging out...");
     const success = await logout();
     if (success) {
-      router.push("/auth/login");
+      router.push("/auth/log-in");
     }
     setShowModal(false);
   };

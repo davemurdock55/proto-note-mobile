@@ -14,6 +14,8 @@ const MAPPING = {
   "chevron.right": "chevron-right",
   "chevron.left": "chevron-left",
   "person.circle": "person",
+  "eye": "visibility",
+  "eye.slash": "visibility-off",
 } as Partial<
   Record<
     import("expo-symbols").SymbolViewProps["name"],
