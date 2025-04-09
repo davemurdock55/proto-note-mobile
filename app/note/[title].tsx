@@ -1,25 +1,25 @@
-import { TenTapEditor } from "@/components/TenTapEditor";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { useEffect, useRef, useCallback, useState } from "react";
-import { StyleSheet, View, Text, Pressable, TextInput } from "react-native";
+import { StyleSheet, View, Text, Pressable, Platform } from "react-native";
 import { useAtomValue, useSetAtom } from "jotai";
-import {
-  notesAtom,
-  selectedNoteIndexAtom,
-  saveNoteAtom,
-  selectedNoteAtom,
-} from "@/store/notesStore";
+import { saveNoteAtom, selectedNoteAtom } from "@/store/notesStore";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { fileSystemService } from "@/services/file-system-service";
 import { TextEditor } from "@/components/TextEditor";
+import * as Haptics from "expo-haptics";
 import { primary } from "@/shared/colors";
 
 // Define these outside of the NotePage component with proper types
 const BackButton = ({ onPress }: { onPress: () => void }) => (
   <Pressable
-    onPress={onPress}
+    onPress={() => {
+      if (Platform.OS === "ios") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      onPress();
+    }}
     style={({ pressed }) => ({
-      opacity: pressed ? 0.6 : 1,
+      opacity: pressed ? 0.2 : 1,
       marginRight: 15,
     })}
   >
@@ -29,9 +29,15 @@ const BackButton = ({ onPress }: { onPress: () => void }) => (
 
 const SaveButton = ({ onPress }: { onPress: () => void }) => (
   <Pressable
-    onPress={onPress}
+    onPress={() => {
+      // Trigger haptic feedback before executing the save function
+      if (Platform.OS === "ios") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      onPress();
+    }}
     style={({ pressed }) => ({
-      opacity: pressed ? 0.6 : 1,
+      opacity: pressed ? 0.2 : 1,
       marginLeft: 15,
     })}
   >
@@ -45,9 +51,7 @@ export default function NotePage() {
   const { title: paramTitle } = useLocalSearchParams();
   const title = decodeURIComponent(String(paramTitle || ""));
   const navigation = useNavigation();
-  const notes = useAtomValue(notesAtom);
   const selectedNote = useAtomValue(selectedNoteAtom);
-  const setSelectedIndex = useSetAtom(selectedNoteIndexAtom);
   const saveNote = useSetAtom(saveNoteAtom);
 
   // Add loading state
@@ -82,20 +86,22 @@ export default function NotePage() {
 
       // Directly save to file system for immediate persistence
       // This bypasses the atom flow to ensure content is saved to disk right away
-      fileSystemService.writeNote(title, editorContent).then((success) => {
-        if (success) {
-          console.log(`Manual save to file system successful`);
-          // Only update our reference after confirmed save
-          lastSavedContentRef.current = editorContent;
+      fileSystemService
+        .writeNote(title, editorContent, Date.now())
+        .then((success) => {
+          if (success) {
+            console.log(`Manual save to file system successful`);
+            // Only update our reference after confirmed save
+            lastSavedContentRef.current = editorContent;
 
-          // Also trigger the atom-based save to update UI state
-          saveNote(editorContent);
-        } else {
-          console.error("Manual save to file system failed");
-        }
-      });
+            // Also trigger the atom-based save to update UI state
+            saveNote(editorContent);
+          } else {
+            console.error("Manual save to file system failed");
+          }
+        });
     }
-  }, [editorContent, title, selectedNote?.title, saveNote]);
+  }, [editorContent, title, saveNote]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -130,21 +136,23 @@ export default function NotePage() {
         );
 
         // Directly save to file system first
-        fileSystemService.writeNote(title, content).then((success) => {
-          if (success) {
-            console.log(`Autosave to file system successful`);
-            // Update reference after confirmed save
-            lastSavedContentRef.current = content;
+        fileSystemService
+          .writeNote(title, content, Date.now())
+          .then((success) => {
+            if (success) {
+              console.log(`Autosave to file system successful`);
+              // Update reference after confirmed save
+              lastSavedContentRef.current = content;
 
-            // Then update state through the atom
-            saveNote(content);
-          } else {
-            console.error("Autosave to file system failed");
-          }
-        });
+              // Then update state through the atom
+              saveNote(content);
+            } else {
+              console.error("Autosave to file system failed");
+            }
+          });
       }, 2000);
     },
-    [title, selectedNote?.title, saveNote]
+    [title, saveNote]
   );
 
   // Update editor content when selected note changes
@@ -162,12 +170,10 @@ export default function NotePage() {
       }
       setIsLoading(false);
     }
-  }, [selectedNote?.title, selectedNote?.content, title]);
+  }, [selectedNote?.title, selectedNote?.content, editorContent, title]);
 
   useEffect(() => {
     const loadNote = async () => {
-      // REMOVE THIS CONDITION - it prevents initial loading
-      // if (!isLoading) {
       setIsLoading(true);
       initialLoadRef.current = true;
       editorInitializedRef.current = false;
@@ -203,7 +209,6 @@ export default function NotePage() {
         setIsLoading(false);
         setEditorContent("");
       }
-      // } REMOVE CLOSING BRACE
     };
 
     loadNote();
@@ -233,7 +238,7 @@ export default function NotePage() {
         // Synchronous save attempt since we're navigating away
         // We need to make sure this completes before we leave the screen
         try {
-          fileSystemService.writeNote(title, editorContent);
+          fileSystemService.writeNote(title, editorContent, Date.now());
           lastSavedContentRef.current = editorContent;
           console.log("Navigation save complete");
         } catch (error) {

@@ -1,5 +1,5 @@
 import { Stack, useRouter, usePathname } from "expo-router";
-import { Pressable, StyleSheet, Platform, Animated, View } from "react-native";
+import { Pressable, Animated, View } from "react-native";
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
@@ -134,11 +134,3 @@ export default function RootLayout() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  divider: {
-    height: 1,
-    backgroundColor: Platform.OS === "ios" ? "#E0E0E0" : "#DDDDDD",
-    width: "100%",
-  },
-});

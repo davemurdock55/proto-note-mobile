@@ -1,5 +1,5 @@
 import React from "react";
-import { Text, View, StyleSheet, StatusBar } from "react-native";
+import { StyleSheet, StatusBar } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import NotesList from "@/components/NotesList";
 import { GestureHandlerRootView } from "react-native-gesture-handler";

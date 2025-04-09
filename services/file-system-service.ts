@@ -70,9 +70,8 @@ async function writeNoteFromFiles(
     const metaPath = `${NOTES_DIRECTORY}${sanitizedTitle}.meta.json`;
     const contentPath = `${NOTES_DIRECTORY}${sanitizedTitle}.txt`;
 
-    // Check if the note already exists to preserve createdAtTime
     let existingCreatedTime: number | undefined;
-
+    // Check if the note already exists to preserve createdAtTime
     try {
       const fileInfo = await FileSystem.getInfoAsync(metaPath);
       if (fileInfo.exists) {
@@ -83,6 +82,7 @@ async function writeNoteFromFiles(
       }
     } catch (error) {
       console.log("No existing metadata found, will create new");
+      console.error("Error: ", error);
     }
 
     // Ensure content is a string

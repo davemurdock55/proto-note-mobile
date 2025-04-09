@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { RectButton } from "react-native-gesture-handler";
 import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import Reanimated, {
@@ -40,7 +40,7 @@ const NotesListItem = ({ title, lastEditTime, onPress, index }: ItemProps) => {
     }
   };
 
-  const renderRightActions = (
+  const RightActions = (
     prog: SharedValue<number>,
     drag: SharedValue<number>
   ) => {
@@ -85,7 +85,7 @@ const NotesListItem = ({ title, lastEditTime, onPress, index }: ItemProps) => {
   return (
     <Swipeable
       ref={swipeableRef}
-      renderRightActions={renderRightActions}
+      renderRightActions={RightActions}
       friction={1} // Decrease from 2 to make it less resistant
       rightThreshold={40}
       overshootRight={false} // Prevent overshooting which can slow down return

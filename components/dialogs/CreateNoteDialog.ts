@@ -44,8 +44,8 @@ export const showCreateNoteDialog = ({ createNote }: CreateNoteParams) => {
         text: "Create",
         onPress: () => {
           // For Android, you'd ideally implement a custom modal with TextInput
-          const noteTitle = `Note ${new Date().toLocaleDateString()}`;
-          const newNoteTitle = createNote(noteTitle);
+          // const noteTitle = `Note ${new Date().toLocaleDateString()}`;
+          // const newNoteTitle = createNote(noteTitle);
         },
       },
     ]);

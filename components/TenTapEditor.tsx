@@ -12,7 +12,6 @@ import {
   TenTapStartKit,
   CoreBridge,
 } from "@10play/tentap-editor";
-import { extractContentFromHtml } from "@/utils/html-utils";
 
 // Define your custom CSS
 const customCSS = `
@@ -37,9 +36,9 @@ export const TenTapEditor: React.FC<TenTapEditorProps> = ({
 
     try {
       // If extractContentFromHtml is available, use it
-      if (typeof extractContentFromHtml === "function") {
-        return extractContentFromHtml(html);
-      }
+      // if (typeof extractContentFromHtml === "function") {
+      //   return extractContentFromHtml(html);
+      // }
 
       // Otherwise provide a minimal implementation
       if (!html.includes("<html>") && !html.includes("<!DOCTYPE")) {

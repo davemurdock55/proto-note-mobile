@@ -1,6 +1,5 @@
 import { notesMock } from "@/store/mocks/notesMock";
 import { NoteContent, NoteInfo } from "@/shared/models";
-import { fetch } from "expo/fetch";
 import { fileSystemService } from "./file-system-service";
 import { syncService } from "./sync-service";
 

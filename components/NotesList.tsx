@@ -1,11 +1,5 @@
 import React, { useState } from "react";
-import {
-  FlatList,
-  StyleSheet,
-  StatusBar,
-  Alert,
-  RefreshControl,
-} from "react-native";
+import { FlatList, StyleSheet, StatusBar, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import NotesListItem from "./NotesListItem";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -15,7 +9,6 @@ import {
   syncNotesAtom,
 } from "@/store/notesStore";
 import { useRouter } from "expo-router";
-import * as FileSystem from "expo-file-system";
 
 const NotesList = () => {
   const notes = useAtomValue(notesAtom);
@@ -43,34 +36,6 @@ const NotesList = () => {
     }
   };
 
-  const clearAllData = async () => {
-    try {
-      const NOTES_DIRECTORY = `${FileSystem.documentDirectory}notes/`;
-      await FileSystem.deleteAsync(NOTES_DIRECTORY, { idempotent: true });
-      await FileSystem.makeDirectoryAsync(NOTES_DIRECTORY, {
-        intermediates: true,
-      });
-      Alert.alert(
-        "Success",
-        "All data cleared successfully. Restart the app to see changes."
-      );
-    } catch (error) {
-      console.error("Failed to clear data:", error);
-      Alert.alert("Error", "Failed to clear data. See console for details.");
-    }
-  };
-
-  const handleResetPress = () => {
-    Alert.alert(
-      "Confirm Reset",
-      "Are you sure you want to delete ALL notes? This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete All", style: "destructive", onPress: clearAllData },
-      ]
-    );
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
@@ -93,9 +58,6 @@ const NotesList = () => {
           />
         }
       />
-      {/* <Pressable onPressIn={handleResetPress} style={styles.resetButton}>
-        <Text style={styles.resetButtonText}>Reset All Data</Text>
-      </Pressable> */}
     </SafeAreaView>
   );
 };

@@ -1,7 +1,7 @@
 import * as BackgroundFetch from "expo-background-fetch";
 import * as TaskManager from "expo-task-manager";
 import { fileSystemService } from "./file-system-service";
-import { NoteInfo, FullNote } from "@/shared/models";
+import { FullNote } from "@/shared/models";
 import { Alert } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { protoNoteAPI } from "@/shared/constants";
@@ -36,7 +36,7 @@ async function getDeviceId(): Promise<string> {
 
     if (!deviceId) {
       // Create a new device ID based on device info
-      const deviceName = Device.deviceName || "";
+      // const deviceName = Device.deviceName || "";
       const installationId = await Application.getInstallationTimeAsync();
       const deviceBrand = Device.brand || "";
       const deviceModel = Device.modelName || "";
@@ -64,15 +64,15 @@ async function getDeviceId(): Promise<string> {
 /**
  * Gets the last synced time for this device
  */
-async function getLastSyncedTime(): Promise<number> {
-  try {
-    const timeString = await SecureStore.getItemAsync(LAST_SYNCED_TIME_KEY);
-    return timeString ? parseInt(timeString, 10) : 0;
-  } catch (error) {
-    console.error("Error getting last synced time:", error);
-    return 0;
-  }
-}
+// async function getLastSyncedTime(): Promise<number> {
+//   try {
+//     const timeString = await SecureStore.getItemAsync(LAST_SYNCED_TIME_KEY);
+//     return timeString ? parseInt(timeString, 10) : 0;
+//   } catch (error) {
+//     console.error("Error getting last synced time:", error);
+//     return 0;
+//   }
+// }
 
 /**
  * Updates the last synced time for this device
@@ -97,7 +97,6 @@ async function performSyncTask() {
     if (!currentUser) return BackgroundFetch.BackgroundFetchResult.NoData;
 
     const deviceId = await getDeviceId();
-    const lastSyncedTime = await getLastSyncedTime();
 
     const localNotes = await fileSystemService.getNotes();
     const notesPayload: FullNote[] = [];
@@ -185,7 +184,7 @@ async function reconcileWithCloudNotes(
   }
 
   // Delete local notes not in cloud
-  for (const [title, _] of localNotesMap.entries()) {
+  for (const [title] of localNotesMap.entries()) {
     if (!cloudNotesMap.has(title)) {
       await fileSystemService.deleteNote(title);
     }

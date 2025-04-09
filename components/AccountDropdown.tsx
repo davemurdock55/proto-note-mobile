@@ -105,7 +105,7 @@ const AccountDropdown = ({
         }),
       ]).start();
     }
-  }, [showModal]);
+  }, [fadeAnim, scaleAnim, showModal]);
 
   return (
     <Modal
