@@ -100,11 +100,7 @@ export default function LoginPage({ onSuccess }: LoginFormProps) {
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
           <ScrollView
-            contentContainerStyle={[
-              styles.scrollContainer,
-              // Only center content when keyboard is not visible
-              !keyboardVisible && styles.centerContent,
-            ]}
+            contentContainerStyle={styles.scrollContainer}
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.card}>
@@ -200,9 +196,9 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     padding: 20,
-  },
-  centerContent: {
-    justifyContent: "center", // Only center when keyboard is hidden
+    justifyContent: "flex-start",
+    paddingTop: 30,
+    marginTop: "30%",
   },
   card: {
     backgroundColor: "white",
