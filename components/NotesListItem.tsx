@@ -95,11 +95,8 @@ const NotesListItem = ({ title, lastEditTime, onPress, index }: ItemProps) => {
       overshootRight={false} // Prevent overshooting which can slow down return
       leftThreshold={10} // Makes it snap back more quickly when swiping back
     >
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
-      >
-        <View style={styles.contentContainer}>
+      <Pressable onPress={onPress}>
+        <View style={styles.item}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.lastEditTime}>{formattedDate}</Text>
         </View>
@@ -112,15 +109,10 @@ const styles = StyleSheet.create({
   item: {
     backgroundColor: "white",
     padding: 20,
+    gap: 6,
     marginVertical: 8,
     marginHorizontal: 16,
     borderRadius: 10,
-  },
-  itemPressed: {
-    backgroundColor: "rgba(0, 184, 219, 0.15)", // Light version of primary color
-  },
-  contentContainer: {
-    gap: 6,
     display: "flex",
     flexDirection: "column",
   },
