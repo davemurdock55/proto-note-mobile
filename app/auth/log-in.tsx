@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSetAtom } from "jotai";
 import {
   StyleSheet,
@@ -12,6 +12,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { primary } from "@/shared/colors";
@@ -25,19 +27,42 @@ interface LoginFormProps {
 
 export default function LoginPage({ onSuccess }: LoginFormProps) {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const login = useSetAtom(loginAtom);
 
+  // Monitor keyboard visibility
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
+
   const handleSubmit = async () => {
+    Keyboard.dismiss();
     setError("");
     setIsLoading(true);
 
     try {
-      const result = await login({ username, password });
+      const result = await login({ username: email, password });
 
       if (result.success) {
         // Navigate to home screen
@@ -57,79 +82,105 @@ export default function LoginPage({ onSuccess }: LoginFormProps) {
     }
   };
 
+  // Handle dismissing keyboard when tapping outside inputs
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardAvoidingView}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.card}>
-            <Text style={styles.title}>Log in to Proto-Note</Text>
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardAvoidingView}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+          <ScrollView
+            contentContainerStyle={[
+              styles.scrollContainer,
+              // Only center content when keyboard is not visible
+              !keyboardVisible && styles.centerContent,
+            ]}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.card}>
+              <Text style={styles.title}>Log in to Proto-Note</Text>
 
-            {error ? (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
+              {error ? (
+                <View style={styles.errorContainer}>
+                  {error.split("\n").map((line, index) => (
+                    <Text key={index} style={styles.errorText}>
+                      • {line}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Username</Text>
-              <TextInput
-                style={styles.input}
-                value={username}
-                onChangeText={setUsername}
-                placeholder="Enter your username"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.passwordContainer}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Email</Text>
                 <TextInput
-                  style={styles.passwordInput}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  placeholder="Enter your password"
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Enter your email"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  onSubmitEditing={() => {
+                    // This will focus the password input when "next" is pressed
+                  }}
+                  blurOnSubmit={false}
                 />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <IconSymbol
-                    name={showPassword ? "eye.slash" : "eye"}
-                    size={24}
-                    color="#777"
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Password</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    placeholder="Enter your password"
+                    returnKeyType="go"
+                    onSubmitEditing={handleSubmit}
                   />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <IconSymbol
+                      name={showPassword ? "eye.slash" : "eye"}
+                      size={24}
+                      color="#777"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.button, isLoading && styles.buttonDisabled]}
+                onPress={handleSubmit}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.buttonText}>Log In</Text>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.switchContainer}>
+                <Text style={styles.switchText}>Don't have an account? </Text>
+                <TouchableOpacity onPress={() => router.push("/auth/sign-up")}>
+                  <Text style={styles.switchLink}>Sign up</Text>
                 </TouchableOpacity>
               </View>
             </View>
-
-            <TouchableOpacity
-              style={[styles.button, isLoading && styles.buttonDisabled]}
-              onPress={handleSubmit}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.buttonText}>Log In</Text>
-              )}
-            </TouchableOpacity>
-
-            <View style={styles.switchContainer}>
-              <Text style={styles.switchText}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => router.push("/auth/sign-up")}>
-                <Text style={styles.switchLink}>Sign up</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -144,8 +195,10 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: "center",
     padding: 20,
+  },
+  centerContent: {
+    justifyContent: "center", // Only center when keyboard is hidden
   },
   card: {
     backgroundColor: "white",

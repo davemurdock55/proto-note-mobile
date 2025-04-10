@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSetAtom } from "jotai";
 import {
   StyleSheet,
@@ -12,6 +12,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { primary } from "@/shared/colors";
@@ -29,16 +31,39 @@ export default function SignUpPage({
 }: SignUpFormProps) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const signup = useSetAtom(signupAtom);
 
+  // Monitor keyboard visibility
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
+
   const handleSubmit = async () => {
+    Keyboard.dismiss();
     setError("");
 
     // Validate passwords match
@@ -50,7 +75,7 @@ export default function SignUpPage({
     setIsLoading(true);
 
     try {
-      const result = await signup({ name, username, password });
+      const result = await signup({ name, username: email, password });
 
       if (result.success) {
         router.replace("/");
@@ -69,114 +94,140 @@ export default function SignUpPage({
     }
   };
 
+  // Handle dismissing keyboard when tapping outside inputs
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardAvoidingView}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.card}>
-            <Text style={styles.title}>Create an Account</Text>
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardAvoidingView}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+          <ScrollView
+            contentContainerStyle={[
+              styles.scrollContainer,
+              // Only center content when keyboard is not visible
+              !keyboardVisible && styles.centerContent,
+            ]}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.card}>
+              <Text style={styles.title}>Create an Account</Text>
 
-            {error ? (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
+              {error ? (
+                <View style={styles.errorContainer}>
+                  {error.split("\n").map((line, index) => (
+                    <Text key={index} style={styles.errorText}>
+                      • {line}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Name</Text>
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Your Name"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Username</Text>
-              <TextInput
-                style={styles.input}
-                value={username}
-                onChangeText={setUsername}
-                placeholder="Choose a username"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.passwordContainer}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Name</Text>
                 <TextInput
-                  style={styles.passwordInput}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  placeholder="Create a password"
+                  style={styles.input}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Your Name"
+                  autoCapitalize="words"
+                  returnKeyType="next"
+                  blurOnSubmit={false}
                 />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <IconSymbol
-                    name={showPassword ? "eye.slash" : "eye"}
-                    size={24}
-                    color="#777"
-                  />
-                </TouchableOpacity>
               </View>
-            </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Confirm Password</Text>
-              <View style={styles.passwordContainer}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Email</Text>
                 <TextInput
-                  style={styles.passwordInput}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                  placeholder="Confirm your password"
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Enter your email"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  blurOnSubmit={false}
                 />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  <IconSymbol
-                    name={showConfirmPassword ? "eye.slash" : "eye"}
-                    size={24}
-                    color="#777"
-                  />
-                </TouchableOpacity>
               </View>
-            </View>
 
-            <TouchableOpacity
-              style={[styles.button, isLoading && styles.buttonDisabled]}
-              onPress={handleSubmit}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.buttonText}>Sign Up</Text>
-              )}
-            </TouchableOpacity>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Password</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    placeholder="Create a password"
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <IconSymbol
+                      name={showPassword ? "eye.slash" : "eye"}
+                      size={24}
+                      color="#777"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-            <View style={styles.switchContainer}>
-              <Text style={styles.switchText}>Already have an account? </Text>
-              <TouchableOpacity onPress={() => router.push("/auth/log-in")}>
-                <Text style={styles.switchLink}>Log in</Text>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Confirm Password</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    placeholder="Confirm your password"
+                    returnKeyType="go"
+                    onSubmitEditing={handleSubmit}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    <IconSymbol
+                      name={showConfirmPassword ? "eye.slash" : "eye"}
+                      size={24}
+                      color="#777"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.button, isLoading && styles.buttonDisabled]}
+                onPress={handleSubmit}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.buttonText}>Sign Up</Text>
+                )}
               </TouchableOpacity>
+
+              <View style={styles.switchContainer}>
+                <Text style={styles.switchText}>Already have an account? </Text>
+                <TouchableOpacity onPress={() => router.push("/auth/log-in")}>
+                  <Text style={styles.switchLink}>Log in</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -191,8 +242,10 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: "center",
     padding: 20,
+  },
+  centerContent: {
+    justifyContent: "center", // Only center when keyboard is hidden
   },
   card: {
     backgroundColor: "white",

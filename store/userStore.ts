@@ -87,7 +87,32 @@ export const loginAtom = atom(
 
       if (axios.isAxiosError(error) && error.response) {
         if (error.response.data && error.response.data.message) {
-          errorMessage = error.response.data.message;
+          try {
+            // Try to parse the message if it's a JSON string
+            const messageContent = error.response.data.message;
+            if (
+              typeof messageContent === "string" &&
+              (messageContent.startsWith("[") || messageContent.startsWith("{"))
+            ) {
+              // Parse the JSON string
+              const parsedErrors = JSON.parse(messageContent);
+
+              if (Array.isArray(parsedErrors)) {
+                // Join multiple validation errors into a single message
+                errorMessage = parsedErrors
+                  .map((err) => err.message)
+                  .filter(Boolean)
+                  .join("\n");
+              } else if (parsedErrors.message) {
+                errorMessage = parsedErrors.message;
+              }
+            } else {
+              errorMessage = messageContent;
+            }
+          } catch (parseError) {
+            // If parsing fails, use the original message
+            errorMessage = error.response.data.message;
+          }
         } else {
           errorMessage = `Error ${error.response.status}: ${error.response.statusText}`;
         }
@@ -135,7 +160,32 @@ export const signupAtom = atom(
 
       if (axios.isAxiosError(error) && error.response) {
         if (error.response.data && error.response.data.message) {
-          errorMessage = error.response.data.message;
+          try {
+            // Try to parse the message if it's a JSON string
+            const messageContent = error.response.data.message;
+            if (
+              typeof messageContent === "string" &&
+              (messageContent.startsWith("[") || messageContent.startsWith("{"))
+            ) {
+              // Parse the JSON string
+              const parsedErrors = JSON.parse(messageContent);
+
+              if (Array.isArray(parsedErrors)) {
+                // Join multiple validation errors into a single message
+                errorMessage = parsedErrors
+                  .map((err) => err.message)
+                  .filter(Boolean)
+                  .join("\n");
+              } else if (parsedErrors.message) {
+                errorMessage = parsedErrors.message;
+              }
+            } else {
+              errorMessage = messageContent;
+            }
+          } catch (parseError) {
+            // If parsing fails, use the original message
+            errorMessage = error.response.data.message;
+          }
         } else {
           errorMessage = `Error ${error.response.status}: ${error.response.statusText}`;
         }
