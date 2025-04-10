@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
+import * as Haptics from "expo-haptics";
 import { RectButton } from "react-native-gesture-handler";
 import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import Reanimated, {
@@ -30,6 +31,9 @@ const NotesListItem = ({ title, lastEditTime, onPress, index }: ItemProps) => {
   const setSelectedIndex = useSetAtom(selectedNoteIndexAtom);
 
   const handleDelete = (noteTitle: string) => {
+    if (Platform.OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }
     // First select this note (so it can be deleted)
     setSelectedIndex(index);
     // Then delete it
@@ -91,8 +95,11 @@ const NotesListItem = ({ title, lastEditTime, onPress, index }: ItemProps) => {
       overshootRight={false} // Prevent overshooting which can slow down return
       leftThreshold={10} // Makes it snap back more quickly when swiping back
     >
-      <Pressable onPress={onPress}>
-        <View style={styles.item}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
+      >
+        <View style={styles.contentContainer}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.lastEditTime}>{formattedDate}</Text>
         </View>
@@ -105,10 +112,15 @@ const styles = StyleSheet.create({
   item: {
     backgroundColor: "white",
     padding: 20,
-    gap: 6,
     marginVertical: 8,
     marginHorizontal: 16,
     borderRadius: 10,
+  },
+  itemPressed: {
+    backgroundColor: "rgba(0, 184, 219, 0.15)", // Light version of primary color
+  },
+  contentContainer: {
+    gap: 6,
     display: "flex",
     flexDirection: "column",
   },

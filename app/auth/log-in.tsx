@@ -15,6 +15,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { primary } from "@/shared/colors";
 import { loginAtom } from "@/store/userStore";
@@ -57,6 +58,9 @@ export default function LoginPage({ onSuccess }: LoginFormProps) {
   }, []);
 
   const handleSubmit = async () => {
+    if (Platform.OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     Keyboard.dismiss();
     setError("");
     setIsLoading(true);

@@ -15,6 +15,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { primary } from "@/shared/colors";
 import { signupAtom } from "@/store/userStore";
@@ -63,6 +64,9 @@ export default function SignUpPage({
   }, []);
 
   const handleSubmit = async () => {
+    if (Platform.OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     Keyboard.dismiss();
     setError("");
 

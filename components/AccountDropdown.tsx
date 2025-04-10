@@ -34,6 +34,9 @@ const AccountDropdown = ({
   const logout = useSetAtom(logoutAtom);
 
   const handleLogout = async () => {
+    if (Platform.OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     console.log("Logging out...");
     const success = await logout();
     if (success) {
@@ -43,6 +46,9 @@ const AccountDropdown = ({
   };
 
   const handleResetPress = () => {
+    if (Platform.OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     Alert.alert(
       "Confirm Reset",
       "Are you sure you want to delete ALL notes? This cannot be undone.",

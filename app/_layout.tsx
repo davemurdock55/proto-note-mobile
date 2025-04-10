@@ -1,5 +1,11 @@
 import { Stack, useRouter, usePathname } from "expo-router";
-import { Pressable, Animated, View } from "react-native";
+import {
+  Pressable,
+  Animated,
+  View,
+  Platform,
+  ActivityIndicator,
+} from "react-native";
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
@@ -27,6 +33,7 @@ export default function RootLayout() {
   const currentUser = useAtomValue(currentUserAtom);
   const createEmptyNote = useSetAtom(createEmptyNoteAtom);
 
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
 
   // Animation values
@@ -45,9 +52,15 @@ export default function RootLayout() {
 
   const handleSyncPress = async () => {
     if (process.env.EXPO_OS === "ios") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
-    await syncService.triggerManualSync();
+
+    setIsSyncing(true);
+    try {
+      await syncService.triggerManualSync();
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   // Close modal when navigating
@@ -60,6 +73,9 @@ export default function RootLayout() {
   };
 
   const handleCreateNotePress = () => {
+    if (Platform.OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     showCreateNoteDialog({
       createNote: (title: string) => {
         // Call the async function but don't wait for it
@@ -96,7 +112,7 @@ export default function RootLayout() {
             <Pressable
               onPress={handleCreateNotePress}
               style={({ pressed }) => ({
-                opacity: pressed ? 0.6 : 1,
+                opacity: pressed ? 0.2 : 1,
                 marginRight: 15,
               })}
             >
@@ -106,23 +122,26 @@ export default function RootLayout() {
           headerRight: () => (
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <Pressable
-                onPress={handleSyncPress}
+                onPress={isSyncing ? undefined : handleSyncPress}
                 style={({ pressed }) => ({
-                  opacity: pressed ? 0.6 : 1,
+                  opacity: isSyncing ? 1 : pressed ? 0.2 : 1,
                   marginRight: 15,
                 })}
               >
-                {/* Using available icon as placeholder - we'd need to add refresh/sync to mapping */}
-                <IconSymbol
-                  name="arrow.trianglehead.2.clockwise.rotate.90.icloud"
-                  size={30}
-                  color={primary}
-                />
+                {isSyncing ? (
+                  <ActivityIndicator size="small" color={primary} />
+                ) : (
+                  <IconSymbol
+                    name="arrow.trianglehead.2.clockwise.rotate.90.icloud"
+                    size={30}
+                    color={primary}
+                  />
+                )}
               </Pressable>
               <Pressable
                 onPress={handleAccountPress}
                 style={({ pressed }) => ({
-                  opacity: pressed ? 0.6 : 1,
+                  opacity: pressed ? 0.2 : 1,
                 })}
               >
                 <IconSymbol name="person.circle" size={26} color={primary} />

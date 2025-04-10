@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import { FlatList, StyleSheet, StatusBar, RefreshControl } from "react-native";
+import {
+  FlatList,
+  StyleSheet,
+  StatusBar,
+  RefreshControl,
+  Platform,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import NotesListItem from "./NotesListItem";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -9,6 +15,7 @@ import {
   syncNotesAtom,
 } from "@/store/notesStore";
 import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 
 const NotesList = () => {
   const notes = useAtomValue(notesAtom);
@@ -17,7 +24,28 @@ const NotesList = () => {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
 
+  // Function to create a sequence of haptic pulses
+  const triggerHapticSequence = async () => {
+    if (Platform.OS !== "ios") return; // Only on iOS for best experience
+
+    // First pulse
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+    // Wait a tiny bit then second pulse
+    setTimeout(async () => {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+      // Wait a tiny bit then third pulse
+      setTimeout(async () => {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }, 100);
+    }, 200);
+  };
+
   const handleNotePress = async (index: number, title: string) => {
+    if (Platform.OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     // First update the selected index
     await setSelectedIndex(index);
     // Then navigate programmatically
@@ -26,6 +54,9 @@ const NotesList = () => {
 
   // New function to handle pull-to-refresh
   const onRefresh = async () => {
+    // Add haptic feedback sequence right when refresh starts
+    triggerHapticSequence();
+
     setRefreshing(true);
     try {
       await syncNotes();
