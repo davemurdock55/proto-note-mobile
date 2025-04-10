@@ -5,7 +5,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { saveNoteAtom, selectedNoteAtom } from "@/store/notesStore";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { fileSystemService } from "@/services/file-system-service";
-import { TextEditor } from "@/components/TextEditor";
+import { TextEditor, TextEditorHandle } from "@/components/TextEditor";
 import * as Haptics from "expo-haptics";
 import { primary } from "@/shared/colors";
 
@@ -32,7 +32,7 @@ const SaveButton = ({ onPress }: { onPress: () => void }) => (
     onPress={() => {
       // Trigger haptic feedback before executing the save function
       if (Platform.OS === "ios") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
       onPress();
     }}
@@ -53,6 +53,7 @@ export default function NotePage() {
   const navigation = useNavigation();
   const selectedNote = useAtomValue(selectedNoteAtom);
   const saveNote = useSetAtom(saveNoteAtom);
+  const editorRef = useRef<TextEditorHandle>(null);
 
   // Add loading state
   const [isLoading, setIsLoading] = useState(true);
@@ -73,35 +74,47 @@ export default function NotePage() {
   const lastSavedContentRef = useRef("");
 
   const handleManualSave = useCallback(() => {
-    if (editorContent && editorContent !== lastSavedContentRef.current) {
-      // Clear any pending autosave
+    // ONLY get content directly from the editor component
+    const currentContent = editorRef.current?.getCurrentContent();
+
+    // Add protection against the ref or content missing
+    if (!currentContent) {
+      console.log("No content to save or editor reference missing");
+      return;
+    }
+
+    // Now safe to dismiss keyboard
+    editorRef.current?.dismissKeyboard();
+
+    // Always update the local state with the freshest content
+    setEditorContent(currentContent);
+
+    if (currentContent !== lastSavedContentRef.current) {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
       }
 
       console.log(
-        `Manually saving note ${title} with content length: ${editorContent.length}`
+        `Manually saving note ${title} with content length: ${currentContent.length}`
       );
 
-      // Directly save to file system for immediate persistence
-      // This bypasses the atom flow to ensure content is saved to disk right away
       fileSystemService
-        .writeNote(title, editorContent, Date.now())
+        .writeNote(title, currentContent, Date.now())
         .then((success) => {
           if (success) {
             console.log(`Manual save to file system successful`);
-            // Only update our reference after confirmed save
-            lastSavedContentRef.current = editorContent;
+            lastSavedContentRef.current = currentContent;
+            saveNote(currentContent);
 
-            // Also trigger the atom-based save to update UI state
-            saveNote(editorContent);
+            // Add this line to update the editor's internal state
+            editorRef.current?.updateContent(currentContent);
           } else {
             console.error("Manual save to file system failed");
           }
         });
     }
-  }, [editorContent, title, saveNote]);
+  }, [title, saveNote]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -129,7 +142,7 @@ export default function NotePage() {
 
       console.log(`Setting up autosave for content length: ${content.length}`);
 
-      // Set a new timeout for 2 seconds
+      // Set a new timeout for 5 seconds
       saveTimerRef.current = setTimeout(() => {
         console.log(
           `Autosave triggered with content length: ${content.length}`
@@ -150,9 +163,9 @@ export default function NotePage() {
               console.error("Autosave to file system failed");
             }
           });
-      }, 2000);
+      }, 5000);
     },
-    [title, saveNote]
+    [title, selectedNote?.title, saveNote]
   );
 
   // Update editor content when selected note changes
@@ -170,7 +183,7 @@ export default function NotePage() {
       }
       setIsLoading(false);
     }
-  }, [selectedNote?.title, selectedNote?.content, editorContent, title]);
+  }, [selectedNote?.title, selectedNote?.content, title]);
 
   useEffect(() => {
     const loadNote = async () => {
@@ -246,7 +259,7 @@ export default function NotePage() {
         }
       }
     };
-  }, [editorContent, title, selectedNote?.title]);
+  }, [title, selectedNote?.title]);
 
   return (
     <View style={styles.container}>
@@ -256,6 +269,7 @@ export default function NotePage() {
         </View>
       ) : (
         <TextEditor
+          ref={editorRef}
           key={selectedNote?.title || title}
           initialValue={editorContent}
           onChange={(newContent) => {
