@@ -240,5 +240,70 @@ export const logoutAtom = atom(null, async (get, set) => {
   }
 });
 
+// Verify token atom
+export const verifyTokenAtom = atom(null, async (get, set) => {
+  try {
+    // Get the current user from secure storage to ensure we have fresh data
+    const currentUser = await loadCurrentUser();
+
+    // If no credentials, no need to verify
+    if (!currentUser || !currentUser.isLoggedIn || !currentUser.token) {
+      return { verified: false };
+    }
+
+    // Create a timeout promise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("Verification timeout")), 5000); // 5 seconds timeout
+    });
+
+    // Make API request to verify token with timeout
+    const verificationPromise = axios.post(`${AUTH_ENDPOINT}/verify`, {
+      username: currentUser.username,
+      token: currentUser.token,
+    });
+
+    // Race between actual verification and timeout
+    const response = await Promise.race([verificationPromise, timeoutPromise]);
+
+    if (response.data.verified) {
+      // Update user info with response data
+      const updatedUser: UserCredentials = {
+        name: response.data.name || currentUser.name,
+        username: response.data.username,
+        token: response.data.token,
+        isLoggedIn: true,
+      };
+
+      // Save to secure store and update state
+      await saveUserCredentials(updatedUser);
+      set(currentUserAtom, updatedUser);
+
+      return { verified: true };
+    } else {
+      // Token is invalid, clear credentials
+      await clearUserCredentials();
+      set(currentUserAtom, defaultUserState);
+
+      return { verified: false, message: response.data.message };
+    }
+  } catch (error) {
+    console.error("Token verification error:", error);
+
+    // Current user for potential offline case
+    const currentUser = await loadCurrentUser();
+
+    // Handle network errors (offline cases)
+    if (axios.isAxiosError(error) && !error.response) {
+      console.log("Network error - continuing with existing token");
+      // Keep user logged in when offline
+      set(currentUserAtom, currentUser);
+      return { verified: true, offline: true };
+    }
+
+    // Don't log out on network errors - token might still be valid
+    return { verified: false, message: "Couldn't verify token status" };
+  }
+});
+
 // Export getCurrentUser for use outside of atoms
 export const getCurrentUser = loadCurrentUser;

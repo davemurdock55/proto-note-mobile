@@ -20,6 +20,7 @@ import { useRouter } from "expo-router";
 import { primary } from "@/shared/colors";
 import { loginAtom } from "@/store/userStore";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import { verifyTokenAtom } from "@/store/userStore";
 
 interface LoginFormProps {
   onSuccess: () => void;
@@ -34,7 +35,31 @@ export default function LoginPage({ onSuccess }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const verifyToken = useSetAtom(verifyTokenAtom);
   const login = useSetAtom(loginAtom);
+
+  // Add this effect at the top of the component
+  useEffect(() => {
+    const checkExistingAuth = async () => {
+      try {
+        // Try to verify any existing token
+        const result = await verifyToken();
+
+        if (result.verified) {
+          // If token is valid, go straight to the main screen
+          router.replace("/");
+        } else {
+          // Show login form if verification failed
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
+        setIsLoading(false);
+      }
+    };
+
+    checkExistingAuth();
+  }, []);
 
   // Monitor keyboard visibility
   useEffect(() => {
@@ -91,6 +116,30 @@ export default function LoginPage({ onSuccess }: LoginFormProps) {
     Keyboard.dismiss();
   };
 
+  // Add this before your main return to show loading state
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardAvoidingView}
+        >
+          <View
+            style={[
+              styles.card,
+              { justifyContent: "center", alignItems: "center", padding: 30 },
+            ]}
+          >
+            <ActivityIndicator size="large" color={primary} />
+            <Text style={{ marginTop: 16, color: "#666" }}>
+              Checking authentication...
+            </Text>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
       <SafeAreaView style={styles.container}>
@@ -103,7 +152,7 @@ export default function LoginPage({ onSuccess }: LoginFormProps) {
             contentContainerStyle={styles.scrollContainer}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.card}>
+            <View>
               <Text style={styles.title}>Log in to Proto-Note</Text>
 
               {error ? (

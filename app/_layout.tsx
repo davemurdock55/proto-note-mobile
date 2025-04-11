@@ -20,6 +20,7 @@ import { createEmptyNoteAtom } from "@/store/notesStore";
 import { currentUserAtom } from "@/store/userStore";
 import { primary } from "@/shared/colors";
 import { syncService } from "@/services/sync-service";
+import { verifyTokenAtom } from "@/store/userStore";
 
 // Configure Reanimated logger before the component
 configureReanimatedLogger({
@@ -32,6 +33,7 @@ export default function RootLayout() {
   const pathname = usePathname();
   const currentUser = useAtomValue(currentUserAtom);
   const createEmptyNote = useSetAtom(createEmptyNoteAtom);
+  const verifyToken = useSetAtom(verifyTokenAtom);
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
@@ -42,6 +44,18 @@ export default function RootLayout() {
 
   // Check if the current route is an auth route
   const isAuthRoute = pathname?.startsWith("/auth");
+
+  // Add this effect above your existing redirect effect
+  useEffect(() => {
+    const checkToken = async () => {
+      if (currentUser.isLoggedIn && currentUser.token) {
+        // Only try to verify if we have credentials
+        await verifyToken();
+      }
+    };
+
+    checkToken();
+  }, []); // Run once on app startup
 
   // Redirect to log-in if not logged in and not already on an auth route
   useEffect(() => {
