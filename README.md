@@ -1,50 +1,48 @@
-# Welcome to your Expo app 👋
+# Proto-Note Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Proto-Note is a simple notes app that allows syncing across different devices (taking an offline-first approach).
 
-## Get started
+The syncing uses AWS lambdas to perform its work and stores the necessary data (e.g. auth info, notes info, etc.) in DynamoDB.
 
-1. Install dependencies
+## Project Setup
 
-   ```bash
-   yarn install
-   ```
+Below are the steps to set up and test the project:
 
-2. Start the app
+### Clone Repository
 
-   ```bash
-    yarn expo start
-   ```
+First, you will need to clone the repository using:
 
-In the output, you'll find options to open the app in a
+```bash
+$ git clone https://github.com/davemurdock55/proto-note-mobile.git
+```
+
+### Install Dependencies
+
+Next, install the dependencies needed to run the project:
+
+```bash
+$ yarn install
+```
+
+### Download the "Expo Go" App
+
+Go to the App Store and download the "Expo Go" app. This app was optimized for iOS (but may still run fine on Android -- I just don't have an android to test with). This is the app that is used to test the Proto-Note React Native / Expo application.
+
+### Development
+
+Lastly, you can run the development version of the app by running the following command at the top level of the cloned repository on your computer:
+
+```bash
+$ yarn expo start
+```
+
+This will show up with a **QR code** and a bunch of options to run the application with. **I would recommend scanning the QR code with the phone you intend to test with** (the one with "Expo Go" installed on it). This will build the app and run it on the phone.
+
+There will also be various options to run the app, such as:
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
 - [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
 - [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
 - [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+There should also be a way to test the app using web, but I get errors when I attempt to run it this way. The best experience, and the one that this app is created for, is as an iPhone mobile app.
